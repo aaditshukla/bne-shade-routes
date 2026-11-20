@@ -6,6 +6,7 @@ import './style.css';
 import { createRouter, loadData, type Graph, type ShadeData } from './routing/index.ts';
 import { PRESETS } from './ui/presets.ts';
 import { slotAt, slotTime } from './ui/time.ts';
+import { loadShadows } from './ui/shadows.ts';
 import type { FeatureCollection } from 'geojson';
 
 let slot = slotAt(new Date());
@@ -56,6 +57,35 @@ const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
 
 const fmtMin = (m: number) => m.toFixed(1);
+
+// Shadow overlay (W6): the slot's shadow file, or streets coloured by sunFraction if that file is missing.
+const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
+let shadowData = EMPTY;
+let streetData = EMPTY;
+function setOverlay(shadows: FeatureCollection, streets: FeatureCollection) {
+  shadowData = shadows;
+  streetData = streets;
+  map.getSource<maplibregl.GeoJSONSource>('shadows')?.setData(shadows);
+  map.getSource<maplibregl.GeoJSONSource>('streets')?.setData(streets);
+}
+const streetsBySun = (): FeatureCollection => ({
+  type: 'FeatureCollection',
+  features: graph.edges.map((e) => ({
+    type: 'Feature',
+    properties: { sun: shade.sunFraction[e.id]?.[slot] ?? 1 },
+    geometry: { type: 'LineString', coordinates: e.geometry },
+  })),
+});
+const sunUp = (s: number) => (shade.sun[s]?.alt_deg ?? 0) > 0;
+async function showShadows() {
+  if (!sunUp(slot)) return setOverlay(EMPTY, EMPTY); // after sunset: no file, nothing to draw
+  for (const s of [slot - 1, slot + 1]) if (sunUp(s)) loadShadows(shade.slots[s]); // prefetch so dragging stays smooth
+  const want = slot;
+  const fc = await loadShadows(shade.slots[slot]);
+  if (want !== slot) return; // the slider moved on while this loaded
+  if (fc) setOverlay(fc, EMPTY);
+  else setOverlay(EMPTY, streetsBySun());
+}
 
 function show() {
   const to = dest;
@@ -153,6 +183,7 @@ function readSliders() {
   const alt = shade.sun[slot].alt_deg;
   timeLabel.textContent = `${slotTime(slot)} · ${alt > 0 ? `sun ${Math.round(alt)}° up` : 'sun down'}`;
   alphaLabel.textContent = String(alpha);
+  showShadows();
   show();
 }
 timeInput.value = String(slot);
@@ -165,6 +196,21 @@ map.on('click', (e) => {
 });
 
 map.on('load', () => {
+  // Shadows sit under the basemap's labels; routes go on top of everything.
+  const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+  map.addSource('shadows', { type: 'geojson', data: shadowData });
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#1e293b', 'fill-opacity': 0.22 } }, firstLabel);
+  map.addSource('streets', { type: 'geojson', data: streetData });
+  map.addLayer(
+    {
+      id: 'streets',
+      type: 'line',
+      source: 'streets',
+      layout: { 'line-cap': 'round' },
+      paint: { 'line-width': 4, 'line-opacity': 0.8, 'line-color': ['interpolate', ['linear'], ['get', 'sun'], 0, '#64748b', 1, '#f59e0b'] },
+    },
+    firstLabel,
+  );
   for (const { id, color } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
     map.addLayer({
