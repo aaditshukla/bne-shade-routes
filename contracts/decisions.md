@@ -17,10 +17,11 @@ If one of these changes, tell the team out loud first; nobody's agent edits `con
 
 - **Demo date** 2026-11-21, `Australia/Brisbane` (UTC+10, no DST). 51 slots, every 15 min, 06:00 to 18:30.
 - **Venue / bbox.** The venue is the centre of the bbox; the bbox is venue ± 0.00303° lon, ± 0.00271° lat.
-  **PROVISIONAL (placeholder, not yet confirmed):** the venue is a stand-in at lon 153.0344, lat −27.4578
-  (Fortitude Valley), so the bbox is `[153.03137, -27.46051, 153.03743, -27.45509]`.
-  When the real venue is confirmed, Musa updates `CLAUDE.md`, the `bbox` and `venue` in `graph.json`, and
-  the fixtures in one commit and says so out loud. `validate.py` checks `graph.json`'s bbox against `CLAUDE.md`.
+  **Confirmed:** the venue is Tanda HQ, Level 4, 108 Wickham St, Fortitude Valley, at lon 153.031522,
+  lat −27.460061 (Google Maps pin; the entrance may be a few metres off), so the bbox is
+  `[153.02849, -27.46277, 153.03455, -27.45735]`. The earlier placeholder was lon 153.0344, lat −27.4578;
+  the fixtures were shifted by (−0.002878°, −0.002261°) and their IDs regenerated. `validate.py` checks
+  `graph.json`'s bbox against `CLAUDE.md`.
 - **Fixtures.** The files in `contracts/fixtures/` are tiny and hand-made. Their `sunFraction` values are
   hand-shaped to make shortest and shadiest routes differ; they are **not** computed from the fixture buildings
   and trees (the `shadows/` files are). See `contracts/fixtures/README.md`.
