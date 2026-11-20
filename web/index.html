@@ -14,6 +14,7 @@
   </head>
   <body>
     <div id="map"></div>
+    <div id="three" hidden></div>
     <section id="sheet">
       <h1>Shade Router</h1>
       <p>Tap the map or pick a place. Dark = shade.</p>
@@ -22,6 +23,7 @@
       <label class="slider"><span>Shade hunger</span><output id="alpha-label"></output><input id="alpha" type="range" min="0" max="10" step="1" value="5" /></label>
       <div id="results"><p class="headline">Loading map data…</p></div>
     </section>
+    <button id="view-toggle" aria-pressed="false" aria-label="3D view">3D</button>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

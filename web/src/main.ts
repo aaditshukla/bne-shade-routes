@@ -3,7 +3,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre builds its worker URL at runtime, so Vite never copies the file; ?url makes it ship.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import './style.css';
-import { createRouter, loadData, type Graph, type ShadeData } from './routing/index.ts';
+import { createRouter, loadData, type Graph, type Route, type ShadeData } from './routing/index.ts';
+import type { ShadeView } from './three/index.ts';
 import { PRESETS } from './ui/presets.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
@@ -45,7 +46,11 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right');
 // Keep the venue centred in the part of the map the bottom sheet doesn't cover.
 const sheet = document.getElementById('sheet')!;
-new ResizeObserver(() => map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight })).observe(sheet);
+const threeEl = document.getElementById('three')!;
+new ResizeObserver(() => {
+  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight });
+  threeEl.style.bottom = `${Math.max(0, sheet.offsetHeight - 16)}px`; // 3D sits above the sheet, tucked under its corners
+}).observe(sheet);
 
 const pin = document.createElement('div');
 pin.className = 'venue-pin';
@@ -56,6 +61,9 @@ const destPin = new maplibregl.Marker({ color: '#0f766e' });
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
+// 3D view (W8): created on the first toggle; fed the same routes and slot as the 2D map.
+let view: ShadeView | null = null;
+let routes3d: { shortest: Route; shadiest: Route } | null = null;
 
 const fmtMin = (m: number) => m.toFixed(1);
 
@@ -114,6 +122,9 @@ function show() {
     };
     map.getSource<maplibregl.GeoJSONSource>(spec.id)?.setData(lines[spec.id]);
   }
+  const shortestRoute = same ? shady.r : short.r;
+  routes3d = shortestRoute && shady.r ? { shortest: shortestRoute, shadiest: shady.r } : null;
+  view?.showRoutes(routes3d);
   if (!shady.s || (!same && !short.s)) {
     results.innerHTML = `<p class="headline">No walking route to there.</p>`;
     return;
@@ -185,11 +196,38 @@ function readSliders() {
   timeLabel.textContent = `${slotTime(slot)} · ${alt > 0 ? `sun ${Math.round(alt)}° up` : 'sun down'}`;
   alphaLabel.textContent = String(alpha);
   showShadows();
+  view?.setSlot(slot);
   show();
 }
 timeInput.value = String(slot);
 timeInput.oninput = alphaInput.oninput = readSliders;
 readSliders();
+
+// 2D/3D toggle (laptop-only: CSS hides it on touch). three.js and the building/tree files load on first open.
+const toggle = document.getElementById('view-toggle') as HTMLButtonElement;
+function set3d(on: boolean) {
+  toggle.setAttribute('aria-pressed', String(on));
+  toggle.textContent = on ? '2D' : '3D';
+  threeEl.hidden = !on;
+}
+toggle.onclick = async () => {
+  const on = toggle.getAttribute('aria-pressed') !== 'true';
+  set3d(on);
+  if (!on || view) return;
+  toggle.disabled = true;
+  try {
+    const getJson = (f: string) => fetch(`${import.meta.env.BASE_URL}data/${f}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${f}: HTTP ${r.status}`))));
+    const [{ createShadeView }, buildings, trees] = await Promise.all([import('./three/index.ts'), getJson('buildings.geojson'), getJson('trees.geojson')]);
+    view = createShadeView(threeEl, { bbox: graph.bbox, sun: shade.sun, buildings, trees });
+    view.setSlot(slot);
+    view.showRoutes(routes3d);
+  } catch (err) {
+    console.error('3D view failed to load', err);
+    set3d(false);
+  } finally {
+    toggle.disabled = false;
+  }
+};
 
 map.on('click', (e) => {
   for (const c of chips.children) c.setAttribute('aria-pressed', 'false');

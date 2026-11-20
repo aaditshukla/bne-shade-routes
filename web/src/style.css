@@ -30,6 +30,39 @@ html, body {
   box-shadow: 0 -4px 16px rgb(0 0 0 / 0.12);
 }
 
+/* 3D view (laptop-only stretch): covers the map above the sheet. */
+#three {
+  position: fixed;
+  inset: 0;
+  background: #dbeafe; /* sky colour while three.js loads, so the 2D map does not show through */
+}
+
+#three canvas {
+  display: block;
+}
+
+#view-toggle {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  left: calc(10px + env(safe-area-inset-left));
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 22px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  cursor: pointer;
+}
+
+@media (hover: none), (pointer: coarse) {
+  #view-toggle {
+    display: none;
+  }
+}
+
 /* No double-tap zoom delay on anything you tap. */
 button, input {
   touch-action: manipulation;
