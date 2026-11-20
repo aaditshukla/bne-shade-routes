@@ -49,8 +49,9 @@ your human. Never quick-fix a file in someone else's area.
 | `ai/out/awnings.json` | AI → Data |
 
 ## Domain rules (get these wrong and the demo breaks silently)
-- **Demo bbox** `[minLon, minLat, maxLon, maxLat]` = `[TODO at 9:00]`: about 600 × 600 m centred on
+- **Demo bbox** `[minLon, minLat, maxLon, maxLat]` = `[153.03137, -27.46051, 153.03743, -27.45509]`: about 600 × 600 m centred on
   the venue (Tanda HQ, Fortitude Valley), i.e. venue ± 0.00303° lon and ± 0.00271° lat.
+  **PROVISIONAL:** the centre is a placeholder (lon 153.0344, lat −27.4578) until the real venue is confirmed; see `contracts/decisions.md`.
 - **Coordinates are `[lon, lat]`** everywhere (GeoJSON order). Brisbane latitude is negative (≈ −27.46).
 - **Do geometry in metres.** Project to EPSG:7856 (GDA2020 / MGA zone 56) for lengths, buffers and
   shadows, then write outputs back in EPSG:4326. Never measure distances in degrees.
