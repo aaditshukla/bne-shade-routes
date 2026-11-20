@@ -1,5 +1,7 @@
 :root {
   --ink: #1f2937;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--ink);
 }
@@ -21,10 +23,22 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  /* Side insets matter in landscape on notched iPhones. */
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: #fff;
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 16px rgb(0 0 0 / 0.12);
+}
+
+/* No double-tap zoom delay on anything you tap. */
+button, input {
+  touch-action: manipulation;
+}
+
+/* Keep the attribution button clear of the notch and status bar. */
+.maplibregl-ctrl-top-right {
+  top: env(safe-area-inset-top);
+  right: env(safe-area-inset-right);
 }
 
 #sheet h1 {

@@ -27,6 +27,7 @@ try {
   throw err;
 }
 const { graph, shade } = data;
+results.innerHTML = '';
 const router = createRouter(graph, shade);
 const START = graph.venue.node;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
@@ -199,7 +200,7 @@ map.on('load', () => {
   // Shadows sit under the basemap's labels; routes go on top of everything.
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#1e293b', 'fill-opacity': 0.22 } }, firstLabel);
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#1e293b', 'fill-opacity': 0.35 } }, firstLabel);
   map.addSource('streets', { type: 'geojson', data: streetData });
   map.addLayer(
     {
