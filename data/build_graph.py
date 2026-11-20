@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """D2: OSM walk network -> web/public/data/graph.json (contracts/data-formats.md).
 
-    cd data && uv run python build_graph.py
+    cd data && uv run python build_graph.py [--out FILE]
 
 Steps: download (cached in data/cache/) -> undirected, clipped to the bbox -> largest connected
 component -> venue node (exact coordinates, joined to the nearest street) -> every edge split into
@@ -10,6 +10,7 @@ pieces of at most 30 m -> deterministic node/edge IDs from rounded coordinates -
 Geometry is measured in EPSG:7856 (metres); coordinates are written as [lon, lat], 6 decimals.
 Edge IDs freeze once the real graph.json ships: never change the split, rounding or ID scheme.
 """
+import argparse
 import hashlib
 import json
 import math
@@ -207,7 +208,7 @@ def length_m(coords):
     return sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
 
 
-def build():
+def build(out=OUT):
     bbox, venue = claude_md_bbox_and_venue()
     g = load_raw(bbox)
     edges = raw_edges(g, bbox)
@@ -266,13 +267,15 @@ def build():
         "nodes": node_list,
         "edges": [edge_recs[k] for k in sorted(edge_recs)],
     }
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
     total = sum(r["length_m"] for r in edge_recs.values())
     longest = max(r["length_m"] for r in edge_recs.values())
-    print(f"wrote {OUT}: {len(node_list)} nodes, {len(edge_recs)} edges, "
+    print(f"wrote {out}: {len(node_list)} nodes, {len(edge_recs)} edges, "
           f"total {total / 1000:.2f} km, longest edge {longest:.1f} m")
 
 
 if __name__ == "__main__":
-    build()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", default=str(OUT), help="graph.json output path")
+    build(Path(ap.parse_args().out))
