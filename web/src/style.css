@@ -1,9 +1,50 @@
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/barlow-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/barlow-600-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/barlow-700-latin.woff2') format('woff2');
+}
+
+/* Shadow study palette: graphite ink on drafting white, redline for the shadiest way, amber only for sun. */
 :root {
-  --ink: #1f2937;
+  --ground: #fafaf8;
+  --paper: #fff;
+  --ink: #26282a;
+  --ink-2: #4f5357; /* secondary text, 7.6:1 on white */
+  --rule: #d9dbdc;
+  --red: #d7322c;
+  --grey: #6e7275;
+  --sun: #f2b33d;
+  --hatch: repeating-linear-gradient(45deg, var(--ink) 0 1.2px, var(--paper) 1.2px 5px);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: Barlow, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
+  background: var(--ground);
+  accent-color: var(--ink);
+}
+
+::selection {
+  background: var(--sun);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
 }
 
 html, body {
@@ -15,74 +56,136 @@ html, body {
 #map {
   position: fixed;
   inset: 0;
+  background: var(--ground);
 }
 
-/* Bottom sheet: one-thumb zone on a phone. Controls (picker, results, sliders) land here in W3–W5. */
-#sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Side insets matter in landscape on notched iPhones. */
-  padding: 16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  background: #fff;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.12);
-}
-
-/* 3D view (laptop-only stretch): covers the map above the sheet. */
-#three {
-  position: fixed;
-  inset: 0;
-  background: #dbeafe; /* sky colour while three.js loads, so the 2D map does not show through */
-}
-
-#three canvas {
-  display: block;
-}
-
-#view-toggle {
-  position: fixed;
-  top: calc(10px + env(safe-area-inset-top));
-  left: calc(10px + env(safe-area-inset-left));
-  min-width: 44px;
-  min-height: 44px;
-  border: 1px solid #d1d5db;
-  border-radius: 22px;
-  background: #fff;
-  color: var(--ink);
+button, input, summary {
+  touch-action: manipulation; /* no double-tap zoom delay */
   font: inherit;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  color: inherit;
+}
+
+button {
   cursor: pointer;
 }
 
+/* Map tools: north and 3D, top right, out of the thumb's way. */
+#map-tools {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  display: grid;
+  gap: 8px;
+}
+
+.tool {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgb(38 40 42 / 0.18);
+}
+
+.tool svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease-out;
+}
+
+#view-toggle {
+  border-radius: 12px;
+}
+
+#view-toggle[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* 3D is laptop-only: three.js on a phone in the sun is not the demo. */
 @media (hover: none), (pointer: coarse) {
   #view-toggle {
     display: none;
   }
 }
 
-/* No double-tap zoom delay on anything you tap. */
-button, input {
-  touch-action: manipulation;
-}
-
-/* Keep the attribution button clear of the notch and status bar. */
-.maplibregl-ctrl-top-right {
+.maplibregl-ctrl-top-left {
   top: env(safe-area-inset-top);
-  right: env(safe-area-inset-right);
+  left: env(safe-area-inset-left);
 }
 
-#sheet h1 {
+/* 3D view covers the map above the sheet. */
+#three {
+  position: fixed;
+  inset: 0;
+  background: #dfe6ea; /* sky while three.js loads */
+}
+
+#three canvas {
+  display: block;
+}
+
+/* Bottom sheet: everything the thumb needs, nothing the map needs. */
+#sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 520px;
+  margin: 0 auto;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--paper);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 18px rgb(38 40 42 / 0.14);
+}
+
+/* Title block: the drawing sheet's stamp, a hairline above the content. */
+.title-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  border-bottom: 1px solid var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title-block h1 {
   margin: 0;
-  font-size: 18px;
+  font: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-#sheet p {
-  margin: 4px 0 0;
-  font-size: 15px;
-  color: #6b7280;
+#change {
+  min-height: 44px;
+  margin: -6px -8px -6px 0;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prompt {
+  margin: 12px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 /* One swipeable row of chips; 44 px tall for thumbs. */
@@ -90,112 +193,258 @@ button, input {
   display: flex;
   gap: 8px;
   margin: 12px -16px 0;
-  padding: 0 16px;
+  padding: 0 16px 2px;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+#presets::-webkit-scrollbar {
+  display: none;
 }
 
 #presets button {
   flex: none;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--ink);
   border-radius: 22px;
-  background: #fff;
-  color: var(--ink);
-  font: inherit;
-  font-size: 15px;
+  background: var(--paper);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#presets button:active {
+  background: var(--ground);
 }
 
 #presets button[aria-pressed='true'] {
   background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
-/* Name left, value right, track full width; 44 px tall input so the thumb is easy to grab. */
-.slider {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  margin-top: 8px;
-  font-size: 14px;
-}
-
-.slider output {
-  justify-self: end;
+.headline {
+  margin: 12px 0 10px;
+  font-size: 20px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
-.slider input {
-  grid-column: 1 / -1;
+.headline b {
+  color: var(--red);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#results:empty {
+  display: none;
+}
+
+/* Route rows: name and walk on top, the sun/shade strip below, minutes in sun big on the right. */
+.route {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 14px;
   width: 100%;
-  height: 44px;
-  margin: 0;
-  accent-color: #0f766e;
-}
-
-#sheet .headline {
-  margin: 12px 0 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.card {
-  display: block;
   min-height: 44px;
+  margin-bottom: 8px;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--rule);
   border-radius: 12px;
-  background: #fff;
-  color: var(--ink);
-  font: inherit;
-  font-size: 14px;
+  background: var(--paper);
   text-align: left;
 }
 
-.card[aria-pressed='true'] {
+.route[aria-pressed='true'] {
   border-color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--ink);
 }
 
-.card-label {
+.route-name {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.card .big {
-  font-size: 28px;
+  gap: 8px;
+  min-width: 0;
+  font-size: 16px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.card-sub {
-  display: block;
-  color: #6b7280;
+.route-name small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.swatch {
+.key {
   flex: none;
+  width: 22px;
+  height: 4px;
+  background: var(--red);
+}
+
+.key.dashed {
+  background: repeating-linear-gradient(90deg, var(--grey) 0 5px, transparent 5px 8px);
+}
+
+.mins {
+  grid-row: span 2;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: right;
+}
+
+.mins small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* The signature: each route drawn as hatched shade and amber sun, on one shared metres scale. */
+.strip {
+  display: flex;
+  height: 10px;
+  border: 1px solid var(--ink);
+  background: var(--hatch);
+}
+
+.strip i {
+  display: block;
+  height: 100%;
+  transition: flex-basis 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strip .sun {
+  background: var(--sun);
+}
+
+/* Sliders: name left, value right, a 44 px tall track for the thumb. */
+.slider {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.slider output,
+#hunger output {
+  font-weight: 700;
+}
+
+input[type='range'] {
+  --p: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ink) var(--p), var(--rule) var(--p));
+}
+
+input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ink) var(--p), var(--rule) var(--p));
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -12px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 4px rgb(38 40 42 / 0.25);
+}
+
+input[type='range']::-moz-range-thumb {
   width: 24px;
-  height: 6px;
-  border-radius: 3px;
+  height: 24px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+input[type='range']:focus-visible {
+  outline-offset: -4px;
+}
+
+/* Shade hunger: secondary, folded away by default. */
+#hunger {
+  border-top: 1px solid var(--rule);
+}
+
+#hunger summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+
+#hunger summary::-webkit-details-marker {
+  display: none;
+}
+
+#hunger summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s ease-out;
+}
+
+#hunger[open] summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.hint {
+  margin: -6px 0 4px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* Pins: the venue in graphite, the destination ringed in redline. */
+.venue-pin,
+.dest-pin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgb(38 40 42 / 0.35);
 }
 
 .venue-pin {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
   background: var(--ink);
-  border: 3px solid #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  border: 3px solid var(--paper);
+}
+
+.dest-pin {
+  background: var(--paper);
+  border: 4px solid var(--red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
