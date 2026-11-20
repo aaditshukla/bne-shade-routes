@@ -1,0 +1,9 @@
+[project]
+name = "shade-router-data"
+version = "0.1.0"
+description = "Shade Router data pipeline: OSM walk graph, shadows, shade.json"
+requires-python = ">=3.11"
+dependencies = [
+    "osmnx>=2.0,<3",
+]
+# validate.py is stdlib-only and needs none of the above.
