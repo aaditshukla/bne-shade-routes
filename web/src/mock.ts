@@ -29,4 +29,3 @@ for (let r = 0; r < 7; r++)
   }
 
 export const START = id(3, 3); // the venue
-export const DEMO_DEST = id(3, 6); // 210 m east: straight is sunny, the row-4 detour is shaded

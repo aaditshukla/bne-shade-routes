@@ -1,6 +1,6 @@
 // Self-check: npm run check:routing
 import assert from 'node:assert/strict';
-import { buildGraph, route, summary, type Edge, type SunFractions } from './index.ts';
+import { buildGraph, nearestNode, route, summary, type Edge, type SunFractions } from './index.ts';
 
 // A square: A–B–D is short and sunny, A–C–D is 20 m longer and shaded.
 const edges: Edge[] = [
@@ -62,5 +62,9 @@ for (let trial = 0; trial < 50; trial++) {
   if (best.n1 === undefined) assert.equal(r, null);
   else assert.ok(Math.abs(r!.edges.reduce((s, e) => s + cost(e), 0) - best.n1) < 1e-6, `trial ${trial}`);
 }
+
+// nearestNode: at 60°S a degree of lon is half a degree of lat, so 'a' (≈83 m) beats 'b' (≈111 m).
+assert.equal(nearestNode({ a: [0.0015, -60], b: [0, -60.001] }, [0, -60]), 'a');
+assert.equal(nearestNode({}, [0, 0]), null);
 
 console.log('routing self-check passed');

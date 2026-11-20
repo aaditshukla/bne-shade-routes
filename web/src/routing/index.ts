@@ -109,3 +109,19 @@ class MinHeap {
     return top;
   }
 }
+
+/** Closest node to a [lon, lat] point. Scales lon by cos(lat) so the ranking matches metres. */
+export function nearestNode(coords: Record<string, [number, number]>, [lon, lat]: [number, number]): string | null {
+  const k = Math.cos((lat * Math.PI) / 180);
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const id in coords) {
+    const [x, y] = coords[id];
+    const d = ((x - lon) * k) ** 2 + (y - lat) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = id;
+    }
+  }
+  return best;
+}
