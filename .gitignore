@@ -1,0 +1,24 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# claude: personal settings (hand-made files aren't auto-ignored)
+.claude/settings.local.json
+
+# caches: never committed, never re-downloaded (CLAUDE.md)
+data/cache/
+ai/cache/
+
+# node
+node_modules/
+web/dist/
+.vercel/
+
+# python
+__pycache__/
+.venv/
+*.pyc
+
+# os
+.DS_Store
