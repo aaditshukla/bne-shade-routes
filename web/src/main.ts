@@ -1,18 +1,25 @@
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre builds its worker URL at runtime, so Vite never copies the file; ?url makes it ship.
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import './style.css';
 import { buildGraph, nearestNode, route, summary } from './routing/index.ts';
-import { nodes, edges, sun, START } from './mock.ts';
+import { nodes, edges, sun, slots, START } from './mock.ts';
 import { PRESETS, VENUE } from './ui/presets.ts';
-import type { FeatureCollection } from 'geojson';
+import { slotAt, slotTime } from './ui/time.ts';
+import type { FeatureCollection, LineString } from 'geojson';
 
-const SLOT = 24; // 12:00
+let slot = slotAt(new Date());
+let alpha = 5; // shade hunger for the shadiest route
+let dest: string | null = null;
 const WALK_SPEED_MS = 1.3;
 const ROUTES = [
-  { id: 'shortest', label: 'Shortest', alpha: 0, color: '#9ca3af' },
-  { id: 'shadiest', label: 'Shadiest', alpha: 5, color: '#0f766e' },
+  { id: 'shortest', label: 'Shortest', color: '#9ca3af' },
+  { id: 'shadiest', label: 'Shadiest', color: '#0f766e' },
 ] as const;
 type RouteId = (typeof ROUTES)[number]['id'];
+
+maplibregl.setWorkerUrl(workerUrl);
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -22,6 +29,9 @@ const map = new maplibregl.Map({
   attributionControl: false,
 });
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right');
+// Keep the venue centred in the part of the map the bottom sheet doesn't cover.
+const sheet = document.getElementById('sheet')!;
+new ResizeObserver(() => map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight })).observe(sheet);
 
 const pin = document.createElement('div');
 pin.className = 'venue-pin';
@@ -37,11 +47,13 @@ let selected: RouteId = 'shadiest';
 
 const fmtMin = (m: number) => m.toFixed(1);
 
-function show(dest: string) {
-  destPin.setLngLat(nodes[dest]).addTo(map);
+function show() {
+  const to = dest;
+  if (!to) return;
+  destPin.setLngLat(nodes[to]).addTo(map);
   const found = ROUTES.map((spec) => {
-    const r = route(graph, sun, START, dest, spec.alpha, SLOT);
-    return { spec, r, s: r && summary(r, sun, SLOT) };
+    const r = route(graph, sun, START, to, spec.id === 'shortest' ? 0 : alpha, slot);
+    return { spec, r, s: r && summary(r, sun, slot) };
   });
 
   const [short, shady] = found;
@@ -94,8 +106,15 @@ results.onclick = (e) => {
 };
 
 function pick(lonlat: [number, number]) {
-  const dest = nearestNode(nodes, lonlat);
-  if (dest && dest !== START) show(dest);
+  const picked = nearestNode(nodes, lonlat);
+  if (!picked || picked === START) return;
+  dest = picked;
+  show();
+  // Frame both routes on a new pick (not on slider moves, so the map doesn't jump while dragging).
+  const bounds = new maplibregl.LngLatBounds();
+  for (const fc of Object.values(lines))
+    for (const f of fc.features) for (const c of (f.geometry as LineString).coordinates) bounds.extend(c as [number, number]);
+  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: { top: 80, bottom: 48, left: 48, right: 48 }, maxZoom: 17 }); // top leaves room for the pin
 }
 
 // Preset chips: aria-pressed marks the active one; a map tap clears it.
@@ -110,6 +129,23 @@ for (const p of PRESETS) {
   };
   chips.append(b);
 }
+
+// Sliders: any change recomputes both routes and the card.
+const timeInput = document.getElementById('time') as HTMLInputElement;
+const alphaInput = document.getElementById('alpha') as HTMLInputElement;
+const timeLabel = document.getElementById('time-label')!;
+const alphaLabel = document.getElementById('alpha-label')!;
+function readSliders() {
+  slot = timeInput.valueAsNumber;
+  alpha = alphaInput.valueAsNumber;
+  const alt = slots[slot].alt_deg;
+  timeLabel.textContent = `${slotTime(slot)} · ${alt > 0 ? `sun ${Math.round(alt)}° up` : 'sun down'}`;
+  alphaLabel.textContent = String(alpha);
+  show();
+}
+timeInput.value = String(slot);
+timeInput.oninput = alphaInput.oninput = readSliders;
+readSliders();
 
 map.on('click', (e) => {
   for (const c of chips.children) c.setAttribute('aria-pressed', 'false');

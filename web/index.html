@@ -11,6 +11,8 @@
       <h1>Shade Router</h1>
       <p>Tap the map or pick a place.</p>
       <div id="presets"></div>
+      <label class="slider"><span>Time</span><output id="time-label"></output><input id="time" type="range" min="0" max="50" step="1" /></label>
+      <label class="slider"><span>Shade hunger</span><output id="alpha-label"></output><input id="alpha" type="range" min="0" max="10" step="1" value="5" /></label>
       <div id="results"></div>
     </section>
     <script type="module" src="/src/main.ts"></script>
