@@ -1,0 +1,7 @@
+{
+  "_note": "20 image ids with YOUR OWN left/right labels, made before the full run. detect.py checks agreement against this (need >= 16/20). Fill the ids from ai/cache/images.jsonl.",
+  "images": [
+    { "id": "REPLACE_ME_01", "left": { "covered": false, "kind": null }, "right": { "covered": false, "kind": null } },
+    { "id": "REPLACE_ME_02", "left": { "covered": false, "kind": null }, "right": { "covered": false, "kind": null } }
+  ]
+}
