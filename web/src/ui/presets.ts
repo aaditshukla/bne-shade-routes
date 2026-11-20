@@ -1,11 +1,7 @@
-// shortcut: approximate Fortitude Valley centre; replace with the venue entrance once the bbox is set at 9:00.
-export const VENUE: [number, number] = [153.0355, -27.4575]; // [lon, lat]
-
-// shortcut: placeholder names on mock-grid corners; swap for 5 real places inside the bbox once it's set.
+// shortcut: the sample-data street ends near the venue; swap for 5 real places from docs/demo-routes.md (P1, W7).
 export const PRESETS: { label: string; lonlat: [number, number] }[] = [
-  { label: 'Café', lonlat: [153.03763, -27.4575] },
-  { label: 'Park', lonlat: [153.03692, -27.4556] },
-  { label: 'Station', lonlat: [153.03408, -27.4594] },
-  { label: 'Gallery', lonlat: [153.03337, -27.45623] },
-  { label: 'Bus stop', lonlat: [153.03621, -27.45877] },
+  { label: 'West end', lonlat: [153.029096, -27.460061] },
+  { label: 'West', lonlat: [153.030309, -27.460061] },
+  { label: 'East', lonlat: [153.032735, -27.460061] },
+  { label: 'East end', lonlat: [153.033948, -27.460061] },
 ];

@@ -4,7 +4,8 @@ import { slotAt, slotTime } from './time.ts';
 
 const bne = (hhmm: string) => new Date(`2026-11-21T${hhmm}:00+10:00`);
 assert.equal(slotAt(bne('06:00')), 0);
-assert.equal(slotAt(bne('06:14')), 0);
+assert.equal(slotAt(bne('06:07')), 0);
+assert.equal(slotAt(bne('06:08')), 1); // rounds to the nearest slot
 assert.equal(slotAt(bne('06:15')), 1);
 assert.equal(slotAt(bne('16:30')), 42);
 assert.equal(slotAt(bne('18:30')), 50);
