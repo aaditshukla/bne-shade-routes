@@ -2,7 +2,7 @@
 
 Tiny, hand-made, self-consistent files in the formats of `contracts/data-formats.md`. Code against these until real data is on main.
 `web/public/data/` starts as a copy of everything here except this README. All IDs are the deterministic ones from the contract
-(`validate.py` recomputes them). The venue and bbox are **provisional placeholders** (see `contracts/decisions.md`).
+(`validate.py` recomputes them). The venue and bbox are the confirmed Tanda HQ location (see `contracts/decisions.md`).
 
 ## The ladder
 
