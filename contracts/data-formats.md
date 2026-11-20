@@ -50,10 +50,10 @@ Undirected walk graph for the bbox; the largest connected component only.
 ```jsonc
 {
   "version": 1,
-  "bbox": [153.03137, -27.46051, 153.03743, -27.45509],     // [minLon, minLat, maxLon, maxLat]; must equal CLAUDE.md
-  "venue": { "name": "Venue entrance", "lon": 153.0344, "lat": -27.4578, "node": "n_1a2b3c4d" },  // routes start here (Q2); node is a nodes[].id at this exact point
+  "bbox": [153.02849, -27.46277, 153.03455, -27.45735],     // [minLon, minLat, maxLon, maxLat]; must equal CLAUDE.md
+  "venue": { "name": "Venue entrance", "lon": 153.031522, "lat": -27.460061, "node": "n_1a2b3c4d" },  // routes start here (Q2); node is a nodes[].id at this exact point
   "nodes": [
-    { "id": "n_1a2b3c4d", "lon": 153.0344, "lat": -27.4578, "name": "optional label" }
+    { "id": "n_1a2b3c4d", "lon": 153.031522, "lat": -27.460061, "name": "optional label" }
   ],
   "edges": [
     {
@@ -62,7 +62,7 @@ Undirected walk graph for the bbox; the largest connected component only.
       "b": "n_5e6f7a8b",             // geometry[last] is b's [lon, lat]
       "length_m": 120.23,            // metres along the geometry (EPSG:7856); > 0
       "name": "optional street name",
-      "geometry": [[153.0344, -27.4578], [153.03561, -27.4578]]   // [lon, lat] polyline, ≥ 2 vertices, inside bbox
+      "geometry": [[153.031522, -27.460061], [153.032732, -27.460061]]   // [lon, lat] polyline, ≥ 2 vertices, inside bbox
     }
   ]
 }
