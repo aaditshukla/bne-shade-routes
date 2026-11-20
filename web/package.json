@@ -1,0 +1,19 @@
+{
+  "name": "shade-router-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "check:routing": "node --experimental-strip-types --no-warnings src/routing/route.check.ts",
+    "check:time": "node --experimental-strip-types --no-warnings src/ui/time.check.ts"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.19.0"
+  }
+}

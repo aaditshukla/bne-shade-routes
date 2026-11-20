@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Shade Router</title>
+    <meta name="description" content="Walking directions that keep you in the shade around Fortitude Valley." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f766e'/%3E%3Cpath d='M16 2a14 14 0 0 1 0 28z' fill='%231f2937'/%3E%3C/svg%3E" />
+    <!-- Start the data and tile fetches while the 300 KB bundle is still downloading. -->
+    <link rel="preload" href="%BASE_URL%data/graph.json" as="fetch" crossorigin />
+    <link rel="preload" href="%BASE_URL%data/shade.json" as="fetch" crossorigin />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+  </head>
+  <body>
+    <div id="map"></div>
+    <section id="sheet">
+      <h1>Shade Router</h1>
+      <p>Tap the map or pick a place. Dark = shade.</p>
+      <div id="presets"></div>
+      <label class="slider"><span>Time</span><output id="time-label"></output><input id="time" type="range" min="0" max="50" step="1" /></label>
+      <label class="slider"><span>Shade hunger</span><output id="alpha-label"></output><input id="alpha" type="range" min="0" max="10" step="1" value="5" /></label>
+      <div id="results"><p class="headline">Loading map data…</p></div>
+    </section>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

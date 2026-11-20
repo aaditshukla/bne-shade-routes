@@ -9,6 +9,8 @@ dependencies = [
     "pysolar>=0.11",
     "numpy",
     "matplotlib",
+    "osmnx>=2.0,<3",
+    "networkx",
 ]
 
 [tool.uv]
