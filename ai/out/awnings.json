@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "edges": {
+    "e_2b810bf2b8": {
+      "kind": "awning",
+      "covered_fraction": 0.8,
+      "confidence": 0.9,
+      "verified": true,
+      "image_ids": []
+    },
+    "e_34d8746240": {
+      "kind": "verandah",
+      "covered_fraction": 0.6,
+      "confidence": 0.85,
+      "verified": true,
+      "image_ids": []
+    },
+    "e_4ecb3f96d9": {
+      "kind": "covered_walkway",
+      "covered_fraction": 0.7,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": []
+    }
+  }
+}
