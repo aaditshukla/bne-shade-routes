@@ -39,6 +39,8 @@ let to: Place | null = null;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
 const nodeAt = new Map(graph.nodes.map((n) => [n.id, [n.lon, n.lat] as [number, number]]));
 const edgeLength = new Map(graph.edges.map((e) => [e.id, e.length_m]));
+const edgeGeom = new Map(graph.edges.map((e) => [e.id, e.geometry]));
+const SUN = '#f2b33d'; // the strip's amber (--sun in style.css)
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -163,12 +165,15 @@ function show() {
     shady.s = short.s;
     short.r = null;
   }
+  // One feature per street, carrying its sun at this slot, so the line shows where the walk is sunny.
   for (const { spec, r } of found) {
     lines[spec.id] = {
       type: 'FeatureCollection',
-      features: r
-        ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r.coords } }]
-        : [],
+      features: (r?.edges ?? []).map((id) => ({
+        type: 'Feature',
+        properties: { sun: shade.sunFraction[id]?.[slot] ?? 1 },
+        geometry: { type: 'LineString', coordinates: edgeGeom.get(id)! },
+      })),
     };
     map.getSource<maplibregl.GeoJSONSource>(spec.id)?.setData(lines[spec.id]);
   }
@@ -211,11 +216,13 @@ function select(id: RouteId) {
   for (const { id: other } of ROUTES) {
     const on = other === id;
     map.setPaintProperty(other, 'line-color', on ? RED : GREY);
-    map.setPaintProperty(other, 'line-width', on ? 5 : 3.5);
+    map.setPaintProperty(other, 'line-width', on ? 7 : 3.5);
     map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
     map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
+    map.setLayoutProperty(`${other}-sun`, 'visibility', on ? 'visible' : 'none');
   }
   map.moveLayer(id);
+  map.moveLayer(`${id}-sun`);
 }
 
 // The 3D view draws its 'shadiest' route in red on top, so hand it the route in focus there.
@@ -473,6 +480,14 @@ map.on('load', () => {
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': GREY }, // select() below styles both lines
+    });
+    // Amber core on the sunny streets of the route in focus, as strong as the street is sunny.
+    map.addLayer({
+      id: `${id}-sun`,
+      type: 'line',
+      source: id,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': SUN, 'line-width': 4, 'line-opacity': ['get', 'sun'] },
     });
   }
   select(selected);
