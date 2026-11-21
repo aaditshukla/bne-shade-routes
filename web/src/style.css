@@ -132,7 +132,6 @@ button {
 
 /* Landmark pins: an ink dot with the name beside it; the hit area grows to 44 px for a thumb. */
 .landmark {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 5px;
