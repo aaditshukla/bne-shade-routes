@@ -4,6 +4,10 @@ Walking directions for a Brisbane summer that keep you in the shade, including s
 
 Built at the Tanda HackAIthon (21 Nov 2026) in Fortitude Valley.
 
+![Shade Router: pick a destination, then drag the time from 9:00 to 4:30 pm and the shadiest route moves from Wickham Street to Barry Parade](web/docs/hero.gif)
+
+**Live:** https://bne-shade-routes.vercel.app
+
 ## The demo
 
 Scan the QR code, pick a start and destination around the venue like in any maps app (search a street or junction, tap the map, drag a pin or use your location), and compare the **shortest** and **shadiest** walking routes, each with its **minutes in the sun**. Drag the time slider and the shadows move and the route changes.
