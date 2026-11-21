@@ -1,7 +1,7 @@
 # Data QA + limits note (D9)
 
-**Second pass on REAL OSM and BCC inputs (main at `99489ed`). Awnings are NOT in yet:** `ai/out/awnings.json` does not exist, so `shade.json` is building + tree shade only. Rerun after D8 before any awning number goes on a slide.
-`validate.py` on `web/public/data/`: all OK (graph, shade, buildings, trees, 50 of 50 daytime slot files). No `awnings.json` is committed.
+**Second pass on REAL OSM and BCC inputs, now WITH awnings (D8 done, 21 Nov).** `ai/out/awnings.json` (55 verified edges) is merged into `shade.json`.
+`validate.py` on `web/public/data/`: all OK (graph, shade, buildings, trees, 50 of 50 daytime slot files). `awnings.json` is committed too (55 edges, 55 verified). `check_awnings_merge.py` confirms the merge matches the contract.
 
 - **Graph (OSM walk network):** 798 nodes, 960 edges, 19.02 km, longest edge 29.9 m (split to 30 m or less). Edge IDs are deterministic and now frozen (two builds gave byte-identical `graph.json`). The venue is a map pin 17 m from the nearest street edge, joined to it.
 - **Buildings (OSM, bbox + 100 m):** 368. Height source: `osm` 13 (4%), `levels` 36 (10%), `default` 6 m 319 (87%). Median height 6 m; 15 buildings are 20 m or taller, tallest 150 m. 48 footprints reaching beyond bbox + 100 m and 2 with unusable geometry were dropped.
@@ -19,4 +19,4 @@
 - **Size:** `web/public/data` is about 4.3 MB (shadow overlays about 3.6 MB), under the 5 MB phone budget.
 - **Approximated:** the building height fallback (87% of buildings use the 6 m default, so real heights differ); tree canopy radius 4 m and height 8 m everywhere; BCC polygons turned into discs; walking speed 1.3 m/s; shadow polygons simplified to 0.5 m and clipped to bbox + 200 m; `sunFraction` rounded to 0.01.
 - **Not modelled:** UV, reflected heat, tree seasonality, cloud, covered areas that are not yet detected from street photos, anything outside the 600 x 600 m bbox.
-- **Still to do:** rerun D8 (awnings merge) on the real graph once `ai/out/awnings.json` lands, then update the awnings line here (edges covered, covered metres, sun-minutes on the demo pairs before and after).
+- **Awnings (D8):** 55 of 960 edges changed, all 55 verified (43 awning, 7 covered walkway, 5 verandah). Those edges total 1,174 m; weighted by covered_fraction about 641 m of footpath is shaded. Sun-minutes on the demo pairs before vs after are in `data/demo-pairs.md`. Merged from the committed raw shade (no cache rebuild), so geometry is unchanged.

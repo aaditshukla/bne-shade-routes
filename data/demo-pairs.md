@@ -71,3 +71,35 @@ Cheap afternoon win (+3% distance, 0.8 min saved at 16:30); at 09:00 and 12:00 i
 - **12:00 is the weakest time** (sun about 80 degrees up, buildings cast almost no shadow; most edges are full sun). Awnings are what should change that, so rerun this after the awnings merge and prefer pairs that improve at midday.
 - Building heights are mostly the 6 m default (87%) and trees are canopy-extent discs, so building shade is understated at 09:00 and 16:30 (see `data/QA.md`).
 - Pair order for the chips: 1 first (small detour, easy to explain), 2 for the time-slider demo, 4 as the second slider example.
+
+## After the awnings merge (D8, 21 Nov)
+
+Same script rerun on `shade.json` with 55 verified awning edges. Sun-minutes dropped on every pair, and midday now saves 0.7 to 1.2 min (was 0.2 to 1.5, mostly 0.2 to 0.3 on pairs 1 and 4). Routes still differ between shortest and shadiest on every pair. Pair 2 now changes route across the day (Macrossan > Diddams Lane at 09:00 and 16:30, Ann Street at 12:00), good for the slider; pair 1 now uses the same shadiest route at 12:00 and 16:30.
+
+```
+
+Duncan St & Wickham St  n_f677a08c
+  09:00  shortest 292 m 2.4 sun-min | shadiest 321 m 1.2 sun-min | saves 1.3 (+10% distance) | via Venue access > Wickham Street > Duncan Street
+  12:00  shortest 292 m 2.9 sun-min | shadiest 298 m 2.2 sun-min | saves 0.7 (+2% distance) | via Venue access > Wickham Street
+  16:30  shortest 292 m 2.4 sun-min | shadiest 298 m 1.3 sun-min | saves 1.1 (+2% distance) | via Venue access > Wickham Street
+
+Boundary St & Dodge Ln  n_5abc6f9c
+  09:00  shortest 347 m 3.8 sun-min | shadiest 495 m 1.8 sun-min | saves 2.0 (+43% distance) | via Venue access > Macrossan Street > Diddams Lane > Boundary Street
+  12:00  shortest 347 m 3.8 sun-min | shadiest 411 m 2.6 sun-min | saves 1.2 (+19% distance) | via Venue access > Ann Street > Boundary Street
+  16:30  shortest 347 m 2.8 sun-min | shadiest 439 m 1.5 sun-min | saves 1.3 (+27% distance) | via Venue access > Macrossan Street > Diddams Lane > Boundary Street
+
+Boundary St & Ivory St  n_a3c07730
+  09:00  shortest 443 m 4.8 sun-min | shadiest 598 m 2.3 sun-min | saves 2.5 (+35% distance) | via Venue access > Macrossan Street > Boundary Street
+  12:00  shortest 443 m 4.9 sun-min | shadiest 508 m 3.7 sun-min | saves 1.2 (+15% distance) | via Venue access > Ann Street > Boundary Street
+  16:30  shortest 443 m 3.2 sun-min | shadiest 541 m 1.8 sun-min | saves 1.4 (+22% distance) | via Venue access > Boundary Street
+
+Barry Pde & Gipps St  n_a6498936
+  09:00  shortest 311 m 3.7 sun-min | shadiest 390 m 2.1 sun-min | saves 1.5 (+25% distance) | via Venue access > Wickham Street > Gipps Street
+  12:00  shortest 311 m 3.7 sun-min | shadiest 312 m 2.7 sun-min | saves 1.0 (+0% distance) | via Venue access > Gipps Street
+  16:30  shortest 311 m 2.6 sun-min | shadiest 382 m 1.3 sun-min | saves 1.3 (+23% distance) | via Venue access > Gotha Street > Barry Parade > Gipps Street
+
+Macrossan St & Queen St  n_8e224ba7
+  09:00  shortest 321 m 2.8 sun-min | shadiest 386 m 1.4 sun-min | saves 1.4 (+20% distance) | via Venue access
+  12:00  shortest 321 m 2.9 sun-min | shadiest 386 m 1.7 sun-min | saves 1.2 (+20% distance) | via Venue access
+  16:30  shortest 321 m 2.1 sun-min | shadiest 330 m 1.4 sun-min | saves 0.8 (+3% distance) | via Venue access
+```
