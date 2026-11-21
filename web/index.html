@@ -22,10 +22,15 @@
       <button id="view-toggle" class="tool" aria-pressed="false" aria-label="3D view">3D</button>
     </div>
     <section id="sheet" aria-label="Route">
+      <div id="grab" aria-hidden="true"></div>
+      <button id="mini" type="button" aria-label="Show the route panel"></button>
       <div class="title-block">
         <h1 id="title">Shade Router</h1>
         <span id="stamp">21 Nov 2026</span>
       </div>
+      <button id="trip" type="button" aria-label="Change start or destination"><span id="trip-text"></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </button>
       <div id="pick">
         <div class="fields">
           <label class="field"><span class="dot from" aria-hidden="true"></span><span class="sr">From</span>

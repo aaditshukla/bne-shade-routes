@@ -111,22 +111,15 @@ button {
   color: var(--paper);
 }
 
-/* 3D is laptop-only: three.js on a phone in the sun is not the demo. */
-@media (hover: none), (pointer: coarse) {
-  #view-toggle {
-    display: none;
-  }
-}
-
 .maplibregl-ctrl-top-left {
   top: env(safe-area-inset-top);
   left: env(safe-area-inset-left);
 }
 
-/* 3D view covers the map above the sheet. */
+/* 3D view covers the map. On a phone it stops where the bottom sheet starts (--sheet-h, set in main.ts). */
 #three {
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--sheet-h, 0px);
   background: #dfe6ea; /* sky while three.js loads */
 }
 
@@ -136,7 +129,6 @@ button {
 
 /* Landmark pins: an ink dot with the name beside it; the hit area grows to 44 px for a thumb. */
 .landmark {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -363,9 +355,104 @@ button {
   }
 }
 
+/* Phone, once a route is up: the sheet folds to the trip, the route cards and the slider so the map has room.
+   Tapping the trip opens it again. */
+#trip {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .collapsed .title-block,
+  .collapsed #pick,
+  .collapsed #hunger,
+  .collapsed .route-meta {
+    display: none;
+  }
+
+  .collapsed #trip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--ground);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+  }
+
+  #trip-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #trip svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Phone: swipe the sheet's top down and it folds to one bar so the whole map shows; tap or swipe the bar up to
+   bring it back (main.ts). */
+#grab,
+#mini {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  #grab {
+    display: flex;
+    justify-content: center;
+    height: 16px;
+    margin-top: -6px;
+  }
+
+  #grab::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--rule);
+  }
+
+  .searching #grab {
+    display: none;
+  }
+
+  .minimised #sheet > :not(#grab, #mini) {
+    display: none;
+  }
+
+  .minimised #mini {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
    Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {
+  #three {
+    bottom: 0;
+  }
+
   #sheet {
     top: 16px;
     left: 16px;
@@ -384,6 +471,41 @@ button {
   .maplibregl-ctrl-top-left,
   #three .three-credit {
     left: 404px;
+  }
+}
+
+/* Phone in 3D: the sheet shrinks so the scene keeps most of the screen, and the time slider moves up under the
+   title so it stays in view while the sheet scrolls. Keep 900px in sync with WIDE in main.ts. */
+@media (max-width: 899.98px) {
+  body.view-3d:not(.searching) #sheet {
+    display: flex;
+    flex-direction: column;
+    max-height: 40vh;
+  }
+
+  body.view-3d:not(.searching) #sheet > * {
+    flex: none;
+  }
+
+  body.view-3d:not(.searching) .slider {
+    order: 1;
+  }
+
+  body.view-3d:not(.searching) #time {
+    order: 2;
+  }
+
+  body.view-3d:not(.searching) #pick {
+    order: 3;
+  }
+
+  body.view-3d:not(.searching) #results,
+  body.view-3d:not(.searching) #notice {
+    order: 4;
+  }
+
+  body.view-3d:not(.searching) #hunger {
+    order: 5;
   }
 }
 

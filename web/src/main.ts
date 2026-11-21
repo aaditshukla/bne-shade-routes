@@ -66,11 +66,14 @@ const WIDE = matchMedia('(min-width: 900px)');
 const sheetCover = () =>
   WIDE.matches ? { top: 0, right: 0, bottom: 0, left: sheet.offsetLeft + sheet.offsetWidth } : { top: 0, right: 0, bottom: sheet.offsetHeight, left: 0 };
 // setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the cover really changed.
-new ResizeObserver(() => {
+let sheetMoving = false; // while the sheet animates, move the map once at the end, not every frame
+function fitSheet() {
+  document.documentElement.style.setProperty('--sheet-h', `${sheet.offsetHeight}px`); // the 3D view ends above the sheet
   if (document.body.classList.contains('navigating')) return; // walking mode sets its own padding
   const p = map.getPadding(), c = sheetCover();
   if (p.bottom !== c.bottom || p.left !== c.left) map.setPadding(c);
-}).observe(sheet);
+}
+new ResizeObserver(() => sheetMoving || fitSheet()).observe(sheet);
 
 // Both pins drag to move that end of the route, like any maps app.
 function makePin(cls: string, label: string) {
@@ -173,6 +176,7 @@ function show() {
   const a = from.node;
   const b = to.node;
   destPin.setLngLat(nodeAt.get(b)!).addTo(map);
+  tripText.textContent = `${from.label} → ${to.label}`;
   if (a === b) {
     clearRoutes();
     results.innerHTML = `<p class="headline">Start and destination are the same spot.</p>`;
@@ -248,7 +252,9 @@ function select(id: RouteId) {
     map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
     map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
     map.setLayoutProperty(`${other}-sun`, 'visibility', on ? 'visible' : 'none');
+    map.setLayoutProperty(`${other}-case`, 'visibility', on ? 'visible' : 'none');
   }
+  map.moveLayer(`${id}-case`);
   map.moveLayer(id);
   map.moveLayer(`${id}-sun`);
 }
@@ -300,6 +306,7 @@ const inputs = { from: document.getElementById('from') as HTMLInputElement, to: 
 const suggestEl = document.getElementById('suggest')!;
 const swapBtn = document.getElementById('swap') as HTMLButtonElement;
 const noticeEl = document.getElementById('notice')!;
+const tripText = document.getElementById('trip-text')!;
 const MY_LOCATION = 'My location';
 let active: End = 'to';
 let options: Place[] = [];
@@ -334,6 +341,8 @@ function setEnd(end: End, place: Place) {
   restoreInputs();
   if (end === 'from' && !to) setActive('to');
   show();
+  document.body.classList.toggle('collapsed', !!to); // CSS folds the sheet on phones only
+  document.body.classList.remove('minimised');
   frame();
 }
 
@@ -402,6 +411,67 @@ suggestEl.onclick = (e) => {
   if (i != null) choose(options[+i]);
 };
 
+document.getElementById('trip')!.onclick = () => document.body.classList.remove('collapsed');
+
+// Phone: swipe down from the sheet's top (not the slider or route cards) to fold it to a one-line bar; tap or swipe
+// the bar up to bring back whatever was showing. The sheet follows the finger down, then the box eases to its new height.
+// Touch events, not pointer ones: the sheet scrolls, which cancels pointers.
+const mini = document.getElementById('mini')!;
+const isMini = () => document.body.classList.contains('minimised');
+const STILL = matchMedia('(prefers-reduced-motion: reduce)');
+function minimise(on: boolean, dragged = 0) {
+  const m = results.querySelector('[aria-pressed="true"] .mins')?.firstChild?.textContent;
+  if (on) mini.textContent = to ? `→ ${to.label}${m ? ` · ${m} min in sun` : ''}` : 'Where to?';
+  const h0 = sheet.offsetHeight - dragged;
+  sheet.style.transform = '';
+  document.body.classList.toggle('minimised', on);
+  if (STILL.matches) return;
+  sheetMoving = true;
+  sheet.style.overflow = 'hidden'; // no scrollbar flash while the box is smaller than its content
+  const h1 = sheet.offsetHeight;
+  sheet.animate([{ height: `${h0}px` }, { height: `${h1}px` }].map((k) => ({ ...k, boxSizing: 'border-box' })), {
+    duration: 260,
+    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  }).onfinish = () => {
+    sheetMoving = false;
+    sheet.style.overflow = '';
+    fitSheet();
+  };
+}
+mini.onclick = () => minimise(false);
+let swipeY: number | null = null;
+let dragY = 0;
+sheet.addEventListener('touchstart', (e) => {
+  const top = sheet.scrollTop === 0 && (e.target as Element).closest('#grab, .title-block, #trip, .headline, label.slider');
+  swipeY = !WIDE.matches && !sheetMoving && e.touches.length === 1 && (isMini() || top) ? e.touches[0].clientY : null;
+  dragY = 0;
+}, { passive: true });
+sheet.addEventListener('touchmove', (e) => {
+  if (swipeY == null || isMini()) return;
+  const dy = e.touches[0].clientY - swipeY;
+  if (dy <= 0 && !dragY) return; // an upward drag scrolls the sheet as usual
+  dragY = Math.max(0, dy);
+  e.preventDefault(); // the sheet moves, not its scroll
+  sheet.style.transition = 'none';
+  sheet.style.transform = `translateY(${dragY}px)`;
+});
+sheet.addEventListener('touchend', (e) => {
+  if (swipeY == null) return;
+  const dy = e.changedTouches[0].clientY - swipeY;
+  swipeY = null;
+  if (isMini() ? dy < -30 : dy > 40) {
+    e.preventDefault(); // no click after a swipe, so the trip row doesn't also unfold
+    minimise(!isMini(), dragY);
+  } else if (dragY) {
+    sheet.style.transition = STILL.matches ? '' : 'transform 200ms ease-out'; // not far enough: spring back
+    sheet.style.transform = '';
+  }
+});
+sheet.addEventListener('touchcancel', () => {
+  swipeY = null;
+  sheet.style.transform = '';
+});
+
 swapBtn.onclick = () => {
   if (!to) return;
   [from, to] = [to, from];
@@ -434,12 +504,13 @@ timeInput.value = String(slot);
 timeInput.oninput = alphaInput.oninput = readSliders;
 readSliders();
 
-// 2D/3D toggle (laptop-only: CSS hides it on touch). three.js and the building/tree files load on first open.
+// 2D/3D toggle (phone and laptop). three.js and the building/tree files load on first open.
 const toggle = document.getElementById('view-toggle') as HTMLButtonElement;
 function set3d(on: boolean) {
   toggle.setAttribute('aria-pressed', String(on));
   toggle.textContent = on ? '2D' : '3D';
   threeEl.hidden = !on;
+  document.body.classList.toggle('view-3d', on); // the phone layout shrinks the sheet in 3D (style.css)
 }
 toggle.onclick = async () => {
   const on = toggle.getAttribute('aria-pressed') !== 'true';
@@ -473,23 +544,6 @@ const northArrow = northBtn.querySelector('svg')!;
 map.on('rotate', () => (northArrow.style.transform = `rotate(${-map.getBearing()}deg)`));
 northBtn.onclick = () => (nav.active ? nav.toggleOrientation() : map.resetNorth());
 
-// 45° hatch tile for shadows, drawn once at 2× for sharp lines on retina screens.
-function hatchImage() {
-  const n = 16;
-  const c = document.createElement('canvas');
-  c.width = c.height = n;
-  const g = c.getContext('2d')!;
-  g.strokeStyle = INK;
-  g.lineWidth = 2;
-  g.beginPath();
-  for (const o of [-n, 0, n]) {
-    g.moveTo(o, n);
-    g.lineTo(o + n, 0);
-  }
-  g.stroke();
-  return g.getImageData(0, 0, n, n);
-}
-
 map.on('load', () => {
   // MapLibre expands the attribution when source metadata lands (after load); fold it behind its (i) once tiles settle.
   map.once('idle', () => document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show'));
@@ -497,12 +551,9 @@ map.on('load', () => {
   if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', '#fafaf8');
   // Shadows sit under the basemap's labels; routes go on top of everything.
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
-  map.addImage('hatch', hatchImage(), { pixelRatio: 2 });
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
-  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
-  map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
-  // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#4a5f86', 'fill-opacity': 0.2, 'fill-antialias': false } }, firstLabel);
+  // Buildings sit on top of their shadows, so the cool wash only ever means shade on the ground.
   if (map.getLayer('building')) {
     map.moveLayer('building', firstLabel);
     map.setPaintProperty('building', 'fill-color', '#d4d3cc');
@@ -538,6 +589,14 @@ map.on('load', () => {
   );
   for (const { id } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
+    // Dark casing under the route in focus, so its red and amber both stand off the pale map.
+    map.addLayer({
+      id: `${id}-case`,
+      type: 'line',
+      source: id,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': INK, 'line-width': 10 },
+    });
     map.addLayer({
       id,
       type: 'line',
@@ -545,13 +604,13 @@ map.on('load', () => {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': GREY }, // select() below styles both lines
     });
-    // Amber core on the sunny streets of the route in focus, as strong as the street is sunny.
+    // Sunny streets of the route in focus turn amber across the full width, as strong as the street is sunny.
     map.addLayer({
       id: `${id}-sun`,
       type: 'line',
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': SUN, 'line-width': 4, 'line-opacity': ['get', 'sun'] },
+      paint: { 'line-color': SUN, 'line-width': 7, 'line-opacity': ['get', 'sun'] },
     });
   }
   select(selected);
