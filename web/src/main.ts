@@ -437,12 +437,12 @@ northBtn.onclick = () => map.resetNorth();
 
 // 45° hatch tile for shadows, drawn once at 2× for sharp lines on retina screens.
 function hatchImage() {
-  const n = 16;
+  const n = 24; // 12 px apart on screen: open enough to read on a phone
   const c = document.createElement('canvas');
   c.width = c.height = n;
   const g = c.getContext('2d')!;
   g.strokeStyle = INK;
-  g.lineWidth = 2;
+  g.lineWidth = 3;
   g.beginPath();
   for (const o of [-n, 0, n]) {
     g.moveTo(o, n);
@@ -461,9 +461,8 @@ map.on('load', () => {
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
   map.addImage('hatch', hatchImage(), { pixelRatio: 2 });
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
-  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
-  map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.18, 'fill-antialias': false } }, firstLabel);
+  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.4 } }, firstLabel);
   // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
   if (map.getLayer('building')) {
     map.moveLayer('building', firstLabel);
