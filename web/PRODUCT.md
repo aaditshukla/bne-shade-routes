@@ -26,7 +26,7 @@ It finds shade that height data can't see. Building shadows and street trees com
 - Two routes: shortest (α = 0) and shadiest (α from the "shade hunger" slider, 0–10, default 5). When both have the same sun exposure they merge into one route.
 - For each route: minutes in sun, distance, and walking minutes. The headline reads "% less sun for N min extra walk".
 - Time slider: 51 slots. Shadow polygons for the slot are overlaid; if a slot's shadow file is missing, streets are coloured by sun fraction instead.
-- The 3D view (buildings, trees, sun shadows, both routes) is laptop only and hidden on touch devices.
+- The 3D view (buildings, trees, sun shadows, both routes) is available on phones and laptops: a 2D/3D toggle under the north button; on a phone the 3D view sits above the bottom sheet.
 - Shade hunger stays in the product but is secondary to time.
 - Constraints: phone first, one-thumb use, tap targets ≥ 44 px, and safe-area insets on notched iPhones. Basemap from OpenFreeMap through MapLibre. No new dependencies without the team agreeing. Routing (`src/routing/`) and the 3D scene (`src/three/`) are out of scope for visual redesign.
 - Preset destinations are placeholders until the real places land.

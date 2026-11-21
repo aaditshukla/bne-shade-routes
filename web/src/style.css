@@ -107,22 +107,15 @@ button {
   color: var(--paper);
 }
 
-/* 3D is laptop-only: three.js on a phone in the sun is not the demo. */
-@media (hover: none), (pointer: coarse) {
-  #view-toggle {
-    display: none;
-  }
-}
-
 .maplibregl-ctrl-top-left {
   top: env(safe-area-inset-top);
   left: env(safe-area-inset-left);
 }
 
-/* 3D view covers the map above the sheet. */
+/* 3D view covers the map. On a phone it stops where the bottom sheet starts (--sheet-h, set in main.ts). */
 #three {
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--sheet-h, 0px);
   background: #dfe6ea; /* sky while three.js loads */
 }
 
@@ -361,6 +354,10 @@ button {
 /* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
    Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {
+  #three {
+    bottom: 0;
+  }
+
   #sheet {
     top: 16px;
     left: 16px;

@@ -65,6 +65,7 @@ const sheetCover = () =>
   WIDE.matches ? { top: 0, right: 0, bottom: 0, left: sheet.offsetLeft + sheet.offsetWidth } : { top: 0, right: 0, bottom: sheet.offsetHeight, left: 0 };
 // setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the cover really changed.
 new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--sheet-h', `${sheet.offsetHeight}px`); // the 3D view ends above the sheet
   const p = map.getPadding(), c = sheetCover();
   if (p.bottom !== c.bottom || p.left !== c.left) map.setPadding(c);
 }).observe(sheet);
@@ -397,7 +398,7 @@ timeInput.value = String(slot);
 timeInput.oninput = alphaInput.oninput = readSliders;
 readSliders();
 
-// 2D/3D toggle (laptop-only: CSS hides it on touch). three.js and the building/tree files load on first open.
+// 2D/3D toggle (phone and laptop). three.js and the building/tree files load on first open.
 const toggle = document.getElementById('view-toggle') as HTMLButtonElement;
 function set3d(on: boolean) {
   toggle.setAttribute('aria-pressed', String(on));
