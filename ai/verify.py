@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -24,19 +25,16 @@ import config
 
 KIND_ENUM = ["awning", "verandah", "shade_sail", "covered_walkway", "none"]
 
-TOOL = {
-    "name": "confirm_footpath_shade",
-    "description": "Independently judge whether one footpath is covered overhead.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "covered": {"type": "boolean"},
-            "kind": {"type": "string", "enum": KIND_ENUM},
-            "confidence": {"type": "number", "description": "0 to 1"},
-            "reason": {"type": "string"},
-        },
-        "required": ["covered", "kind", "confidence", "reason"],
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "covered": {"type": "boolean"},
+        "kind": {"type": "string", "enum": KIND_ENUM},
+        "confidence": {"type": "number", "description": "0 to 1"},
+        "reason": {"type": "string"},
     },
+    "required": ["covered", "kind", "confidence", "reason"],
+    "additionalProperties": False,
 }
 
 SIDE_LABEL = {
@@ -62,7 +60,10 @@ def _prompt(side: str, kind: str | None) -> str:
         f"A previous observer claims this footpath is {claim}.\n\n"
         "Judge that claim independently: is the footpath really covered overhead by "
         "something built (awning, verandah, shade sail, covered walkway)?\n"
-        "Trees do not count. Report with the tool."
+        "Only the stretch of footpath NEAREST the camera counts (roughly the closest 20 m); "
+        "cover further down the street or across an intersection does not. A building's upper "
+        "floor projecting over the footpath (overhang, arcade, undercroft) counts as covered_walkway.\n"
+        "Trees do not count. Answer as JSON matching the schema."
     )
 
 
@@ -70,9 +71,8 @@ def _confirm(client, model: str, image_path: Path, side: str, kind: str | None) 
     def call():
         return client.messages.create(
             model=model,
-            max_tokens=512,
-            tools=[TOOL],
-            tool_choice={"type": "tool", "name": TOOL["name"]},
+            max_tokens=2048,
+            output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
             messages=[
                 {
                     "role": "user",
@@ -85,17 +85,17 @@ def _confirm(client, model: str, image_path: Path, side: str, kind: str | None) 
         )
 
     response = C.call_with_retry(call, label=f"verify {image_path.stem}/{side}")
-    for block in response.content:
-        if getattr(block, "type", None) == "tool_use":
-            payload = dict(block.input or {})
-            reported = payload.get("kind")
-            return {
-                "covered": bool(payload.get("covered", False)),
-                "kind": None if reported in (None, "none") else reported,
-                "confidence": float(payload.get("confidence", 0.0)),
-                "reason": str(payload.get("reason", ""))[:300],
-            }
-    raise RuntimeError(f"no tool_use block for {image_path.name}/{side}")
+    text = next((b.text for b in response.content if getattr(b, "type", None) == "text"), None)
+    if text is None:
+        raise RuntimeError(f"no JSON text for {image_path.name}/{side} (stop={response.stop_reason})")
+    payload = json.loads(text)
+    reported = payload.get("kind")
+    return {
+        "covered": bool(payload.get("covered", False)),
+        "kind": None if reported in (None, "none") else reported,
+        "confidence": float(payload.get("confidence", 0.0)),
+        "reason": str(payload.get("reason", ""))[:300],
+    }
 
 
 def run(

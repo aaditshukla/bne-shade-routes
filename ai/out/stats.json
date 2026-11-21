@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-21",
+  "generated_at": "2026-11-21T04:36:43+00:00",
+  "images_cached": 460,
+  "images_checked": 460,
+  "sides_checked": 920,
+  "first_pass_positives": 173,
+  "first_pass_positive_pct": 18.8,
+  "verified": 92,
+  "rejected_by_verifier": 81,
+  "rejected_pct": 46.8,
+  "edges_covered": 55,
+  "covered_metres": 1174.5,
+  "kinds": {
+    "awning": 43,
+    "covered_walkway": 7,
+    "verandah": 5
+  },
+  "precision": null
+}
