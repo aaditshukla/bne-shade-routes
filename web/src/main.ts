@@ -442,23 +442,6 @@ const northArrow = northBtn.querySelector('svg')!;
 map.on('rotate', () => (northArrow.style.transform = `rotate(${-map.getBearing()}deg)`));
 northBtn.onclick = () => map.resetNorth();
 
-// 45° hatch tile for shadows, drawn once at 2× for sharp lines on retina screens.
-function hatchImage() {
-  const n = 24; // 12 px apart on screen: open enough to read on a phone
-  const c = document.createElement('canvas');
-  c.width = c.height = n;
-  const g = c.getContext('2d')!;
-  g.strokeStyle = INK;
-  g.lineWidth = 3;
-  g.beginPath();
-  for (const o of [-n, 0, n]) {
-    g.moveTo(o, n);
-    g.lineTo(o + n, 0);
-  }
-  g.stroke();
-  return g.getImageData(0, 0, n, n);
-}
-
 map.on('load', () => {
   // MapLibre expands the attribution when source metadata lands (after load); fold it behind its (i) once tiles settle.
   map.once('idle', () => document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show'));
@@ -466,11 +449,9 @@ map.on('load', () => {
   if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', '#fafaf8');
   // Shadows sit under the basemap's labels; routes go on top of everything.
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
-  map.addImage('hatch', hatchImage(), { pixelRatio: 2 });
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.18, 'fill-antialias': false } }, firstLabel);
-  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.4 } }, firstLabel);
-  // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#4a5f86', 'fill-opacity': 0.2, 'fill-antialias': false } }, firstLabel);
+  // Buildings sit on top of their shadows, so the cool wash only ever means shade on the ground.
   if (map.getLayer('building')) {
     map.moveLayer('building', firstLabel);
     map.setPaintProperty('building', 'fill-color', '#d4d3cc');
