@@ -6,7 +6,7 @@ Built at the Tanda HackAIthon (21 Nov 2026) in Fortitude Valley.
 
 ## The demo
 
-Scan the QR code, pick a destination near the venue, and compare the **shortest** and **shadiest** walking routes, each with its **minutes in the sun**. Drag the time slider and the shadows move and the route changes.
+Scan the QR code, pick a start and destination around the venue like in any maps app (search a street or junction, tap the map, drag a pin or use your location), and compare the **shortest** and **shadiest** walking routes, each with its **minutes in the sun**. Drag the time slider and the shadows move and the route changes.
 
 ## How it works
 
