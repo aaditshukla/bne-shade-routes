@@ -394,6 +394,54 @@ button {
   }
 }
 
+/* Phone: swipe the sheet's top down and it folds to one bar so the whole map shows; tap or swipe the bar up to
+   bring it back (main.ts). */
+#grab,
+#mini {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  #grab {
+    display: flex;
+    justify-content: center;
+    height: 16px;
+    margin-top: -6px;
+  }
+
+  #grab::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--rule);
+  }
+
+  .searching #grab {
+    display: none;
+  }
+
+  .minimised #sheet > :not(#grab, #mini) {
+    display: none;
+  }
+
+  .minimised #mini {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
    Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {
