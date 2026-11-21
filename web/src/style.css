@@ -323,23 +323,27 @@ button {
   }
 }
 
-/* Laptop: the sheet becomes a left side panel and the map takes the rest. Keep 900px in sync with WIDE in main.ts. */
+/* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
+   Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {
-  #map,
-  #three {
-    left: 380px;
-  }
-
   #sheet {
-    top: 0;
+    top: 16px;
+    left: 16px;
     right: auto;
+    bottom: auto;
     box-sizing: border-box;
     width: 380px;
     max-width: none;
-    max-height: none;
+    max-height: calc(100vh - 32px);
     margin: 0;
-    border-radius: 0;
-    box-shadow: 4px 0 18px rgb(38 40 42 / 0.14);
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgb(38 40 42 / 0.18);
+  }
+
+  /* The map credits move out from under the card. */
+  .maplibregl-ctrl-top-left,
+  #three .three-credit {
+    left: 404px;
   }
 }
 
