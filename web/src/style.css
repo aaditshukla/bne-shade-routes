@@ -355,7 +355,7 @@ button {
   }
 }
 
-/* Phone, once a route is up: the sheet folds to the trip, the route cards and the slider so the map has room.
+/* Phone, once a route is up: the sheet folds to the trip, the route cards (with distance, walk time and arrival) and the slider so the map has room.
    Tapping the trip opens it again. */
 #trip {
   display: none;
@@ -364,8 +364,7 @@ button {
 @media (max-width: 899px) {
   .collapsed .title-block,
   .collapsed #pick,
-  .collapsed #hunger,
-  .collapsed .route-meta {
+  .collapsed #hunger {
     display: none;
   }
 
