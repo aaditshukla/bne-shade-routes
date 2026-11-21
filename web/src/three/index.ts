@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FeatureCollection, Position } from 'geojson';
 import type { Graph, ShadeData, Route } from '../routing/index.ts';
 import { localProjector, sunDirection } from './geo.ts';
+import * as maplibregl from 'maplibre-gl'; // already loaded by the 2D map; the worker URL is set in main.ts
 
 export interface ShadeViewData {
   bbox: Graph['bbox'];
@@ -18,8 +19,10 @@ export interface ShadeView {
   dispose(): void;
 }
 
-// Same colours as the 2D legend in main.ts.
-const ROUTE_COLORS = { shortest: 0x9ca3af, shadiest: 0x0f766e };
+// Same colours as the 2D legend in main.ts: redline shadiest, grey shortest.
+const ROUTE_COLORS = { shortest: 0x6e7275, shadiest: 0xd7322c };
+const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/positron'; // same as the 2D map in main.ts
+const BASEMAP_PX = 2048; // ≈ 0.5 m per pixel over the ≈ 1 km ground
 const DAY_SKY = new THREE.Color(0xdbeafe);
 const NIGHT_SKY = new THREE.Color(0x1e293b);
 
@@ -56,13 +59,28 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
   sun.shadow.normalBias = 0.3;
   scene.add(sky, sun, sun.target); // target stays at the origin
 
-  // Ground: bbox plus 200 m each side.
+  // Ground: plain at first, then the same Positron basemap as 2D (streets, names, parks) once a hidden map draws it.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }),
+    // Grey tint: full sun lands at about the basemap's own colours instead of blowing out to white.
+    new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }),
   );
   ground.receiveShadow = true;
   scene.add(ground);
+  const groundMap = drapeBasemap(data.bbox, (tex, nw, se) => {
+    const [x0, z0] = toXZ(nw);
+    const [x1, z1] = toXZ(se);
+    ground.geometry.dispose();
+    ground.geometry = new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keeps street names sharp at low angles
+    ground.material.map = tex;
+    ground.material.needsUpdate = true;
+    render();
+  });
+  const credit = document.createElement('div');
+  credit.className = 'three-credit';
+  credit.textContent = '© OpenFreeMap © OpenStreetMap contributors';
+  el.append(credit);
 
   // Buildings: each footprint extruded to height_m, merged into one mesh (one draw call for thousands).
   const blocks: THREE.BufferGeometry[] = [];
@@ -172,6 +190,9 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
     },
     dispose() {
       ro.disconnect();
+      groundMap.cancel();
+      ground.material.map?.dispose();
+      credit.remove();
       controls.dispose();
       clearRoutes();
       scene.traverse((o) => {
@@ -184,4 +205,42 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
       renderer.domElement.remove();
     },
   };
+}
+
+/** Renders the 2D basemap for the bbox plus ≈ 200 m in a hidden MapLibre map, then hands back a texture and its corners. */
+function drapeBasemap(bbox: ShadeViewData['bbox'], done: (tex: THREE.CanvasTexture, nw: Position, se: Position) => void) {
+  const [w, s, e, n] = bbox;
+  const padLon = (e - w) / 3, padLat = (n - s) / 3; // the bbox is ≈ 600 m, so a third is ≈ 200 m
+  const holder = document.createElement('div');
+  holder.style.cssText = `position:fixed;left:0;top:0;width:${BASEMAP_PX}px;height:${BASEMAP_PX}px;visibility:hidden;pointer-events:none`;
+  document.body.append(holder);
+  const map = new maplibregl.Map({
+    container: holder,
+    style: BASEMAP_STYLE,
+    bounds: [w - padLon, s - padLat, e + padLon, n + padLat],
+    interactive: false,
+    attributionControl: false,
+    pixelRatio: 1,
+    canvasContextAttributes: { preserveDrawingBuffer: true }, // so the finished frame can be copied out
+  });
+  map.on('load', () => map.getLayer('background') && map.setPaintProperty('background', 'background-color', '#fafaf8')); // as in 2D
+  let live = true;
+  const cancel = () => {
+    if (!live) return;
+    live = false;
+    map.remove();
+    holder.remove();
+  };
+  map.once('idle', () => {
+    const copy = document.createElement('canvas');
+    copy.width = copy.height = BASEMAP_PX;
+    copy.getContext('2d')!.drawImage(map.getCanvas(), 0, 0, BASEMAP_PX, BASEMAP_PX);
+    // Corners straight from MapLibre's own projection, so streets line up with the buildings.
+    const nw = map.unproject([0, 0]), se = map.unproject([BASEMAP_PX, BASEMAP_PX]);
+    cancel();
+    const tex = new THREE.CanvasTexture(copy);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    done(tex, [nw.lng, nw.lat], [se.lng, se.lat]);
+  });
+  return { cancel };
 }
