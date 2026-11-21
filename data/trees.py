@@ -8,6 +8,11 @@ Source: OSM natural=tree nodes plus natural=tree_row lines sampled every 8 m (Ov
 in data/cache/overpass_trees.json and never re-downloaded). The BCC 'Protected Vegetation, Council
 Vegetation' export is the better source if it ever becomes reachable; this script does not use it.
 
+Council canopy polygons (optional): any data/cache/bcc_*.geojson (or --bcc FILE, repeatable) are Brisbane City
+Council "Protected Vegetation" polygon layers (Council Vegetation, Significant Urban Vegetation). They map canopy
+EXTENTS, not individual trees, so each polygon is clipped to the bbox and filled with discs on a regular grid
+(spacing 5.5 m <= radius 4 m x sqrt(2), so the discs cover it), source "bcc". An approximation, stated as such.
+
 Per tree: canopy_radius_m = diameter_crown / 2 (else 4 m), height_m = height tag (else 8 m).
 Trees are kept only inside the demo bbox (contract); row samples within 2 m of a tree node are dropped.
 Row sampling is done in EPSG:7856 (metres); coordinates are written as [lon, lat], 6 decimals.
@@ -23,7 +28,9 @@ import urllib.request
 from pathlib import Path
 
 from pyproj import Transformer
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point, box, shape
+import numpy as np
+import shapely
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -34,6 +41,8 @@ BBOX = [153.02849, -27.46277, 153.03455, -27.45735]  # [minLon, minLat, maxLon, 
 DEFAULT_RADIUS_M = 4.0
 DEFAULT_HEIGHT_M = 8.0
 ROW_SPACING_M = 8.0
+BCC_GRID_M = 5.5          # <= DEFAULT_RADIUS_M * sqrt(2): discs of radius 4 m on this grid leave no gaps
+BCC_GLOB = "bcc_*.geojson"
 DEDUP_M = 2.0
 ENDPOINTS = ["https://overpass-api.de/api/interpreter"]   # only host the network policy was meant to allow
 
@@ -141,12 +150,62 @@ def build(data):
     return fc, counts
 
 
+def bcc_discs(paths, osm_nodes_m):
+    """Fill Council canopy polygons (GeoJSON, [lon, lat]) with grid discs. Returns [(id, lon, lat, r, h)] and counts."""
+    w, s, e, n = BBOX
+    bbox_m = box(*TO_M.transform(w, s), *TO_M.transform(e, n))
+    seen, out, polys, dup = set(), [], 0, 0
+    for path in paths:
+        fc = json.loads(Path(path).read_text(encoding="utf-8"))
+        for f in fc.get("features", []):
+            if not f.get("geometry"):
+                continue
+            g = shapely.transform(shape(f["geometry"]), lambda a: np.column_stack(TO_M.transform(a[:, 0], a[:, 1]))).buffer(0)
+            g = g.intersection(bbox_m)
+            if g.is_empty or g.area <= 0:
+                continue
+            polys += 1
+            minx, miny, maxx, maxy = g.bounds
+            ix0, iy0 = math.floor(minx / BCC_GRID_M), math.floor(miny / BCC_GRID_M)
+            pts = [((ix + 0.5) * BCC_GRID_M, (iy + 0.5) * BCC_GRID_M, f"bcc/{ix}_{iy}")
+                   for ix in range(ix0, math.ceil(maxx / BCC_GRID_M) + 1)
+                   for iy in range(iy0, math.ceil(maxy / BCC_GRID_M) + 1)]
+            kept = [(x, y, i, DEFAULT_RADIUS_M) for x, y, i in pts if g.contains(Point(x, y))]
+            if not kept:      # polygon smaller than one grid cell: one disc sized to it
+                c = g.representative_point()
+                r = min(DEFAULT_RADIUS_M, max(1.5, math.sqrt(g.area / math.pi)))
+                kept = [(c.x, c.y, f"bcc/{round(c.x, 1)}_{round(c.y, 1)}", round(r, 2))]
+            for x, y, i, r in kept:
+                if i in seen:
+                    continue            # overlapping layers: keep one disc per grid cell
+                if any(math.hypot(x - nx, y - ny) < DEDUP_M for nx, ny in osm_nodes_m):
+                    dup += 1
+                    continue
+                seen.add(i)
+                lon, lat = TO_DEG.transform(x, y)
+                out.append((i, lon, lat, r, DEFAULT_HEIGHT_M))
+    return out, {"polygons": polys, "dup": dup}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cache", default=str(DEFAULT_CACHE), help="raw Overpass JSON cache (downloaded if missing)")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="trees.geojson output path")
+    ap.add_argument("--bcc", action="append", default=None,
+                    help=f"Council canopy polygon GeoJSON (repeatable; default: every data/cache/{BCC_GLOB})")
     args = ap.parse_args()
     fc, c = build(fetch(Path(args.cache)))
+    bcc_paths = args.bcc if args.bcc is not None else sorted(str(p) for p in DEFAULT_CACHE.parent.glob(BCC_GLOB))
+    if bcc_paths:
+        nodes_m = [TO_M.transform(*f["geometry"]["coordinates"]) for f in fc["features"]]
+        discs, bc = bcc_discs(bcc_paths, nodes_m)
+        fc["features"] += [
+            {"type": "Feature", "id": i,
+             "properties": {"id": i, "canopy_radius_m": r, "height_m": h, "source": "bcc"},
+             "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]}}
+            for i, lon, lat, r, h in sorted(discs)]
+        print(f"  BCC canopy polygons ({len(bcc_paths)} file(s)): {bc['polygons']} polygons in the bbox -> {len(discs)} discs "
+              f"({bc['dup']} skipped within {DEDUP_M:g} m of an OSM tree)")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(fc, separators=(",", ":")) + "\n", encoding="utf-8")
