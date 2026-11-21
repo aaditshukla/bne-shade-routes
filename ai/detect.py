@@ -213,7 +213,7 @@ def _report_calibration(calibration: dict, results: list[dict]) -> None:
         image_ok += int(both_ok)
         if not both_ok:
             C.log(
-                f"  {entry['id']}: you said L={expected.get('left')} R={expected.get('right')}, "
+                f"  {entry['id']}: you said L={entry.get('left')} R={entry.get('right')}, "
                 f"model said L={got['left']} R={got['right']} - {got.get('reason', '')}"
             )
 
