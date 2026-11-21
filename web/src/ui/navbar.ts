@@ -43,12 +43,10 @@ export interface NavBar {
   summary(s: Summary | null): void;
   recenter(visible: boolean): void;
   toast(msg: string, opts?: { ms?: number; action?: { label: string; run: () => void } }): void;
-  voice(on: boolean, available: boolean): void;
   /** Height of the banner and of the bar in pixels, for map padding. */
   size(): { top: number; bottom: number };
   onEnd(fn: () => void): void;
   onRecenter(fn: () => void): void;
-  onVoice(fn: () => void): void;
 }
 
 export function createNavBar(): NavBar {
@@ -62,7 +60,6 @@ export function createNavBar(): NavBar {
   const stripEl = $('nav-strip');
   const recenterBtn = $<HTMLButtonElement>('nav-recenter');
   const toastEl = $('nav-toast');
-  const voiceBtn = $<HTMLButtonElement>('nav-voice');
   const endBtn = $<HTMLButtonElement>('nav-end');
   const summaryEl = $('nav-summary');
   const statsEl = $('nav-stats');
@@ -150,11 +147,6 @@ export function createNavBar(): NavBar {
       toastEl.hidden = false;
       toastTimer = window.setTimeout(() => (toastEl.hidden = true), opts.ms ?? 3500);
     },
-    voice(on, available) {
-      voiceBtn.hidden = !available;
-      voiceBtn.setAttribute('aria-pressed', String(on));
-      voiceBtn.textContent = on ? 'Voice on' : 'Voice off';
-    },
     size() {
       return { top: banner.hidden ? 0 : banner.offsetHeight, bottom: bar.hidden ? 0 : bar.offsetHeight };
     },
@@ -163,9 +155,6 @@ export function createNavBar(): NavBar {
     },
     onRecenter(fn) {
       recenterBtn.onclick = fn;
-    },
-    onVoice(fn) {
-      voiceBtn.onclick = fn;
     },
   };
 }

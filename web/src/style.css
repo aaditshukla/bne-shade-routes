@@ -958,10 +958,6 @@ input[type='range']:focus-visible {
   color: var(--paper);
 }
 
-#nav-voice[aria-pressed='true'] {
-  background: var(--sun);
-}
-
 #nav-recenter,
 #nav-toast {
   position: fixed;
