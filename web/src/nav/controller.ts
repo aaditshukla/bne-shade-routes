@@ -5,7 +5,7 @@ import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import type { Graph, LonLat, Route, Router, ShadeData } from '../routing/index.ts';
 import { clockTime, slotAt } from '../ui/time.ts';
 import { fmtDist, iconAngle, type NavBar } from '../ui/navbar.ts';
-import { angleDiff, easeAngle, makeProjector, slicePath, type Fix } from './geo.ts';
+import { dist, easeAngle, makeProjector, pointAt, slicePath, type Fix, type XY } from './geo.ts';
 import { buildLegs, legAt, type Leg } from './legs.ts';
 import { buildManeuvers, instruction, nextManeuver, type Maneuver } from './maneuvers.ts';
 import { OffRouteMonitor } from './offroute.ts';
@@ -78,8 +78,19 @@ export function createNavigation(d: NavDeps): Navigation {
   // Camera.
   let follow = true;
   let courseUp = true;
-  let camHeading = 0;
-  let camReady = false;
+  let camJump = true; // next frame snaps the camera and resets the zoom
+  let redraw = true; // next frame draws even if the dot hasn't moved
+
+  // What is drawn: eased toward the latest fix every frame, so the dot glides instead of hopping once a second.
+  let raf = 0;
+  let lastFrame = 0;
+  let disp: XY | null = null;
+  let dispHead = 0;
+  let lastDS = 0; // metres the last fix moved along the route (a stand-in for speed when the GPS gives none)
+
+  // The phone's compass, when it has one: the cone and a course-up map turn as you turn, not only as you walk.
+  let compass: number | null = null;
+  let compassAt = 0;
 
   const slotNow = (t: number) => slotAt(new Date(t));
   const sunOfAt = (slot: number) => (leg: Leg) => shade.sunFraction[leg.id]?.[slot] ?? 1; // missing data counts as full sun
@@ -135,16 +146,70 @@ export function createNavigation(d: NavDeps): Navigation {
   }
 
   // ---------- camera ----------
-  function moveCamera(at: LonLat, heading: number, jump = false) {
+  function moveCamera(at: LonLat) {
     if (!follow) return;
-    camHeading = camReady ? easeAngle(camHeading, heading, 0.3) : heading;
-    const bearing = courseUp ? camHeading : 0;
     const { top, bottom } = ui.size();
     // The dot sits a little below the middle of the free map, so there is more road ahead than behind.
-    const opts = { center: at, zoom: jump || !camReady ? FOLLOW_ZOOM : Math.max(map.getZoom(), 17), bearing, padding: { top: top + 60, bottom, left: 0, right: 0 } };
-    if (jump || !camReady) map.jumpTo(opts);
-    else map.easeTo({ ...opts, duration: 900, easing: (t) => t });
-    camReady = true;
+    map.jumpTo({ center: at, zoom: camJump ? FOLLOW_ZOOM : Math.max(map.getZoom(), 17), bearing: courseUp ? dispHead : 0, padding: { top: top + 60, bottom, left: 0, right: 0 } });
+    camJump = false;
+  }
+
+  // Where the dot should be right now: along the route at the current pace since the last fix (at most 3 s of
+  // guessing), or at the raw fix when off the route.
+  function targetXY(): XY | null {
+    if (!lastFix) return null;
+    if (!prog || !prog.accurate || prog.off_m > 12) return proj.toXY([lastFix.lon, lastFix.lat]);
+    const sp = lastFix.speed;
+    const pace = paceMs(walkedTotal, firstFix ? (lastFix.t - firstFix.t) / 1000 : 0) || WALK_SPEED_MS;
+    const v = typeof sp === 'number' && sp >= 0 ? (sp < 0.3 ? 0 : Math.min(sp, 2.5)) : lastDS > 0.3 ? pace : 0;
+    const secs = Math.min((Date.now() - lastFixWall) / 1000, 3) * (d.sim?.mult ?? 1);
+    return pointAt(nav.path, Math.min(nav.path.total, prog.walked_m + v * secs));
+  }
+
+  function targetHeading(): number {
+    if (compass !== null && Date.now() - compassAt < 1500) return compass;
+    const f = lastFix;
+    if (f && (f.speed ?? 0) >= 0.8 && typeof f.heading === 'number' && Number.isFinite(f.heading)) return f.heading;
+    return prog?.heading ?? dispHead;
+  }
+
+  function frame(now: number) {
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(0.1, (now - (lastFrame || now)) / 1000);
+    lastFrame = now;
+    const t = targetXY();
+    if (!t || !lastFix) return;
+    const prev = disp;
+    const prevHead = dispHead;
+    const k = 1 - Math.exp(-dt / 0.25);
+    disp = !prev || dist(prev, t) > 60 ? t : [prev[0] + (t[0] - prev[0]) * k, prev[1] + (t[1] - prev[1]) * k];
+    dispHead = prev ? easeAngle(dispHead, targetHeading(), 1 - Math.exp(-dt / 0.15)) : targetHeading();
+    // Nothing visibly moved: skip the redraw (saves battery while standing still).
+    if (prev && !camJump && !redraw && dist(prev, disp) < 0.02 && Math.abs(((dispHead - prevHead + 540) % 360) - 180) < 0.1) return;
+    redraw = false;
+    const at = proj.toLonLat(disp);
+    drawPuck(at, lastFix.accuracy_m, dispHead);
+    moveCamera(at);
+  }
+
+  function onOrient(e: Event) {
+    const o = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
+    // iPhone: webkitCompassHeading, clockwise from north. Android: the absolute event's alpha, counterclockwise.
+    const h = typeof o.webkitCompassHeading === 'number' && o.webkitCompassHeading >= 0 ? o.webkitCompassHeading : o.absolute && o.alpha !== null ? 360 - o.alpha : null;
+    if (h === null || !Number.isFinite(h)) return;
+    compass = (h + (screen.orientation?.angle ?? 0) + 360) % 360;
+    compassAt = Date.now();
+  }
+
+  function listenCompass(on: boolean) {
+    for (const t of ['deviceorientationabsolute', 'deviceorientation']) window[on ? 'addEventListener' : 'removeEventListener'](t, onOrient);
+  }
+
+  // iOS asks for motion access, and only inside the tap that started walking, so this runs before anything awaits.
+  function startCompass() {
+    const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
+    if (!DOE?.requestPermission) return listenCompass(true);
+    DOE.requestPermission().then((p) => p === 'granted' && state !== 'idle' && listenCompass(true), () => {});
   }
 
   map.on('movestart', (e) => {
@@ -226,14 +291,14 @@ export function createNavigation(d: NavDeps): Navigation {
     if (state === 'idle' || state === 'arrived') return;
     lastFix = f;
     lastFixWall = Date.now();
+    redraw = true;
     firstFix ??= f;
 
     if (outsideMap(f)) {
       state = 'starting'; // wait for them to come inside the map
       prog = null;
       ui.banner({ icon: 'warn', instr: "You're outside the shade map", sub: 'It covers about 600 m around Tanda HQ. Tap End to stop.', warn: true });
-      drawPuck([f.lon, f.lat], f.accuracy_m, camHeading);
-      return;
+      return; // the frame loop draws the raw fix
     }
 
     state = 'navigating';
@@ -246,6 +311,7 @@ export function createNavigation(d: NavDeps): Navigation {
       const prevS = prog.walked_m;
       prog = advance(nav, f, prog);
       const dS = prog.walked_m - prevS;
+      lastDS = dS;
       if (dS > 0) {
         walkedTotal += dS;
         sunMetres += dS * (legAt(legs, prog.walked_m) ? sunOfAt(slotNow(f.t))(legAt(legs, prog.walked_m)!) : 1);
@@ -284,14 +350,7 @@ export function createNavigation(d: NavDeps): Navigation {
       drawRoute();
     } else ui.marker(prog.walked_m / (nav.path.total || 1));
 
-    // Where the dot goes: on the route when we're on it, at the raw fix when we're not.
-    const onRoute = prog.accurate && prog.off_m <= 12;
-    const at: LonLat = onRoute ? prog.snapped : [f.lon, f.lat];
-    const moving = (f.speed ?? 0) >= 0.8 && typeof f.heading === 'number' && Number.isFinite(f.heading);
-    const heading = moving ? (f.heading as number) : prog.heading;
-    drawPuck(at, f.accuracy_m, heading);
-    drawWalked(prog.walked_m);
-    moveCamera(at, heading);
+    drawWalked(prog.walked_m); // the dot itself is drawn by the frame loop
 
     if (slot !== offerSlot) {
       offerSlot = slot;
@@ -303,12 +362,13 @@ export function createNavigation(d: NavDeps): Navigation {
     state = 'arrived';
     source?.stop();
     source = null;
+    cancelAnimationFrame(raf);
     const secs = firstFix ? Math.max(1, Math.round((f.t - firstFix.t) / 1000)) : 0;
     const mins = Math.max(1, Math.round(secs / 60));
     ui.banner({ icon: 'pin', instr: "You've arrived" });
     ui.summary({ line: `Walked ${fmtDist(walkedTotal)} in ${mins} min`, sun: `${(sunMetres / WALK_SPEED_MS / 60).toFixed(1)} min in the sun` });
     const end = destPos.get(destNode);
-    if (end) drawPuck(end, 5, camHeading);
+    if (end) drawPuck(end, 5, dispHead);
     drawWalked(nav.path.total);
   }
 
@@ -334,9 +394,12 @@ export function createNavigation(d: NavDeps): Navigation {
     if (state !== 'idle') return;
     ensureLayers();
     state = 'starting';
+    startCompass();
     follow = true;
-    camHeading = 0;
-    camReady = false;
+    camJump = true;
+    disp = null;
+    compass = null;
+    lastDS = 0;
     firstFix = lastFix = null;
     walkedTotal = sunMetres = 0;
     monitor = new OffRouteMonitor();
@@ -354,6 +417,8 @@ export function createNavigation(d: NavDeps): Navigation {
     } else source = new GeolocationSource();
     source.start(onFix, onError);
     weakTimer = window.setInterval(checkWeak, 2000);
+    lastFrame = 0;
+    raf = requestAnimationFrame(frame);
   }
 
   function stop() {
@@ -364,6 +429,8 @@ export function createNavigation(d: NavDeps): Navigation {
     releaseAwake?.();
     releaseAwake = null;
     clearInterval(weakTimer);
+    cancelAnimationFrame(raf);
+    listenCompass(false);
     for (const id of ['nav-route', 'nav-walked', 'nav-ring', 'nav-cone', 'nav-puck']) src(id)?.setData(EMPTY);
     ui.show(false);
     map.easeTo({ bearing: 0, pitch: 0, duration: 400 });
@@ -374,8 +441,7 @@ export function createNavigation(d: NavDeps): Navigation {
   ui.onRecenter(() => {
     follow = true;
     ui.recenter(false);
-    const at = prog?.snapped;
-    if (at) moveCamera(at, prog!.heading, true);
+    camJump = true;
   });
 
   return {
@@ -387,7 +453,7 @@ export function createNavigation(d: NavDeps): Navigation {
     toggleOrientation() {
       courseUp = !courseUp;
       ui.toast(courseUp ? 'Map turns as you walk' : 'North is up');
-      if (prog) moveCamera(prog.snapped, prog.heading);
+      redraw = true; // turn the map now, even when standing still
     },
   };
 }
