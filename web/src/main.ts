@@ -167,6 +167,7 @@ function show() {
   const a = from.node;
   const b = to.node;
   destPin.setLngLat(nodeAt.get(b)!).addTo(map);
+  tripText.textContent = `${from.label} → ${to.label}`;
   if (a === b) {
     clearRoutes();
     results.innerHTML = `<p class="headline">Start and destination are the same spot.</p>`;
@@ -265,6 +266,7 @@ const inputs = { from: document.getElementById('from') as HTMLInputElement, to: 
 const suggestEl = document.getElementById('suggest')!;
 const swapBtn = document.getElementById('swap') as HTMLButtonElement;
 const noticeEl = document.getElementById('notice')!;
+const tripText = document.getElementById('trip-text')!;
 const MY_LOCATION = 'My location';
 let active: End = 'to';
 let options: Place[] = [];
@@ -299,6 +301,7 @@ function setEnd(end: End, place: Place) {
   restoreInputs();
   if (end === 'from' && !to) setActive('to');
   show();
+  document.body.classList.toggle('collapsed', !!to); // CSS folds the sheet on phones only
   frame();
 }
 
@@ -366,6 +369,8 @@ suggestEl.onclick = (e) => {
   const i = (e.target as Element).closest('[data-i]')?.getAttribute('data-i');
   if (i != null) choose(options[+i]);
 };
+
+document.getElementById('trip')!.onclick = () => document.body.classList.remove('collapsed');
 
 swapBtn.onclick = () => {
   if (!to) return;
