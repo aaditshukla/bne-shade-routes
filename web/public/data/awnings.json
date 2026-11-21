@@ -1,0 +1,543 @@
+{
+  "version": 1,
+  "date": "2026-11-21",
+  "generated_at": "2026-11-21T04:36:07+00:00",
+  "summary": {
+    "edges_covered": 55,
+    "covered_metres": 1174.5
+  },
+  "edges": {
+    "e_8ad70c392f": {
+      "kind": "awning",
+      "covered_fraction": 0.333,
+      "confidence": 0.55,
+      "verified": true,
+      "image_ids": [
+        "897859357439420"
+      ]
+    },
+    "e_3994581c82": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.817,
+      "verified": true,
+      "image_ids": [
+        "1370764803300042",
+        "308689004032733",
+        "4082047008528694"
+      ]
+    },
+    "e_175f6f5464": {
+      "kind": "covered_walkway",
+      "covered_fraction": 0.333,
+      "confidence": 0.85,
+      "verified": true,
+      "image_ids": [
+        "1170980076749190"
+      ]
+    },
+    "e_f1264b3495": {
+      "kind": "covered_walkway",
+      "covered_fraction": 0.333,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "482812449609702"
+      ]
+    },
+    "e_642534db21": {
+      "kind": "covered_walkway",
+      "covered_fraction": 1.0,
+      "confidence": 0.667,
+      "verified": true,
+      "image_ids": [
+        "1105890249912209",
+        "484160779363402",
+        "487378585877500"
+      ]
+    },
+    "e_5676811096": {
+      "kind": "awning",
+      "covered_fraction": 0.333,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "538671404182391"
+      ]
+    },
+    "e_aeb329ea05": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.825,
+      "verified": true,
+      "image_ids": [
+        "317570879755088",
+        "317995846396777"
+      ]
+    },
+    "e_2580c17259": {
+      "kind": "awning",
+      "covered_fraction": 0.75,
+      "confidence": 0.877,
+      "verified": true,
+      "image_ids": [
+        "1289468708134745",
+        "531342221190701",
+        "661004391416460"
+      ]
+    },
+    "e_f26d927c10": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.875,
+      "verified": true,
+      "image_ids": [
+        "294360509017953",
+        "974688956635570"
+      ]
+    },
+    "e_2f0c0a5234": {
+      "kind": "verandah",
+      "covered_fraction": 0.25,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "488975492325954"
+      ]
+    },
+    "e_49c8057aea": {
+      "kind": "awning",
+      "covered_fraction": 0.667,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "288124409686538",
+        "803861283586421"
+      ]
+    },
+    "e_1c15bfa747": {
+      "kind": "awning",
+      "covered_fraction": 0.833,
+      "confidence": 0.892,
+      "verified": true,
+      "image_ids": [
+        "295319185470882",
+        "381063796676006",
+        "381557243182240",
+        "524415038724966",
+        "861515561096648"
+      ]
+    },
+    "e_01b440cfbf": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "298248668588821",
+        "381063796676006"
+      ]
+    },
+    "e_d05d2284de": {
+      "kind": "awning",
+      "covered_fraction": 0.8,
+      "confidence": 0.87,
+      "verified": true,
+      "image_ids": [
+        "131666989007598",
+        "489186985624085",
+        "777681502932682",
+        "928624081244167"
+      ]
+    },
+    "e_73c1a3e782": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.893,
+      "verified": true,
+      "image_ids": [
+        "1467424566935149",
+        "219685429713454",
+        "3607387172699836",
+        "374604530524227",
+        "3988150714579585",
+        "525627128451313",
+        "796652387921680",
+        "806456816673132"
+      ]
+    },
+    "e_b3a39c21c4": {
+      "kind": "awning",
+      "covered_fraction": 0.571,
+      "confidence": 0.895,
+      "verified": true,
+      "image_ids": [
+        "455327822197668",
+        "795742741365906",
+        "841354759787642",
+        "952316658903442"
+      ]
+    },
+    "e_727832973f": {
+      "kind": "awning",
+      "covered_fraction": 0.25,
+      "confidence": 0.85,
+      "verified": true,
+      "image_ids": [
+        "580450779598110"
+      ]
+    },
+    "e_368a97e52a": {
+      "kind": "covered_walkway",
+      "covered_fraction": 0.25,
+      "confidence": 0.75,
+      "verified": true,
+      "image_ids": [
+        "1410037302692146",
+        "473888367277582"
+      ]
+    },
+    "e_96e0a8618b": {
+      "kind": "awning",
+      "covered_fraction": 0.667,
+      "confidence": 0.75,
+      "verified": true,
+      "image_ids": [
+        "159448546120203",
+        "3286049168164615"
+      ]
+    },
+    "e_1b9f594a2e": {
+      "kind": "awning",
+      "covered_fraction": 0.667,
+      "confidence": 0.71,
+      "verified": true,
+      "image_ids": [
+        "308712584189173",
+        "516921382654615"
+      ]
+    },
+    "e_cd6f4ed959": {
+      "kind": "awning",
+      "covered_fraction": 0.667,
+      "confidence": 0.775,
+      "verified": true,
+      "image_ids": [
+        "338368334318729",
+        "477453320186445"
+      ]
+    },
+    "e_8f35b8c68b": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "137728615049613"
+      ]
+    },
+    "e_be390c7b2e": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "302272471464601"
+      ]
+    },
+    "e_a70d2f2203": {
+      "kind": "awning",
+      "covered_fraction": 0.143,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "143774221051848"
+      ]
+    },
+    "e_3e5a4af462": {
+      "kind": "awning",
+      "covered_fraction": 0.125,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "770898273625034"
+      ]
+    },
+    "e_7f67ce32b5": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.55,
+      "verified": true,
+      "image_ids": [
+        "520753512633298"
+      ]
+    },
+    "e_b313a92f9e": {
+      "kind": "covered_walkway",
+      "covered_fraction": 1.0,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "796421251059976"
+      ]
+    },
+    "e_d07c29f4b3": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.55,
+      "verified": true,
+      "image_ids": [
+        "810743809551182"
+      ]
+    },
+    "e_5024c46688": {
+      "kind": "verandah",
+      "covered_fraction": 1.0,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "769233277123289"
+      ]
+    },
+    "e_553161e51f": {
+      "kind": "verandah",
+      "covered_fraction": 1.0,
+      "confidence": 0.66,
+      "verified": true,
+      "image_ids": [
+        "4246836308700115",
+        "769233277123289"
+      ]
+    },
+    "e_6949cc8205": {
+      "kind": "covered_walkway",
+      "covered_fraction": 0.5,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "494148275256260"
+      ]
+    },
+    "e_df9be9cf9b": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "1646752532176329"
+      ]
+    },
+    "e_13588873b9": {
+      "kind": "awning",
+      "covered_fraction": 0.4,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "165082645443560",
+        "4249392108428732"
+      ]
+    },
+    "e_6dbbd5c3a9": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "537665237399641"
+      ]
+    },
+    "e_2f803dd853": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.625,
+      "verified": true,
+      "image_ids": [
+        "1166956393745344",
+        "4674400269255552"
+      ]
+    },
+    "e_5ce61dcabd": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "757357161815454"
+      ]
+    },
+    "e_8694e8ef67": {
+      "kind": "awning",
+      "covered_fraction": 0.25,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "501154021070367"
+      ]
+    },
+    "e_1ee826b893": {
+      "kind": "awning",
+      "covered_fraction": 0.25,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "1937921956357930"
+      ]
+    },
+    "e_36a0bd33c6": {
+      "kind": "awning",
+      "covered_fraction": 0.333,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "252448070001152"
+      ]
+    },
+    "e_c9547be5aa": {
+      "kind": "covered_walkway",
+      "covered_fraction": 1.0,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "821623421772328"
+      ]
+    },
+    "e_3ab06f0844": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "487383919176833"
+      ]
+    },
+    "e_e775c8737c": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "128383919250227"
+      ]
+    },
+    "e_778d3b3e3f": {
+      "kind": "awning",
+      "covered_fraction": 0.25,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "464025341335878"
+      ]
+    },
+    "e_5b0b017ce2": {
+      "kind": "verandah",
+      "covered_fraction": 0.5,
+      "confidence": 0.72,
+      "verified": true,
+      "image_ids": [
+        "861515561096648"
+      ]
+    },
+    "e_87a411413f": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.85,
+      "verified": true,
+      "image_ids": [
+        "198335452130548"
+      ]
+    },
+    "e_be395bbdf0": {
+      "kind": "awning",
+      "covered_fraction": 0.75,
+      "confidence": 0.91,
+      "verified": true,
+      "image_ids": [
+        "1186189005169540",
+        "2895255764126372",
+        "855661125030074"
+      ]
+    },
+    "e_c2fd1bc269": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.9,
+      "verified": true,
+      "image_ids": [
+        "796652387921680"
+      ]
+    },
+    "e_7901ab0d9e": {
+      "kind": "awning",
+      "covered_fraction": 0.167,
+      "confidence": 0.85,
+      "verified": true,
+      "image_ids": [
+        "3988150714579585"
+      ]
+    },
+    "e_3f6fd5c648": {
+      "kind": "verandah",
+      "covered_fraction": 1.0,
+      "confidence": 0.8,
+      "verified": true,
+      "image_ids": [
+        "158210936245566"
+      ]
+    },
+    "e_ab3a34f81c": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.93,
+      "verified": true,
+      "image_ids": [
+        "162422015832341"
+      ]
+    },
+    "e_14950bbe2a": {
+      "kind": "awning",
+      "covered_fraction": 0.143,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "150291207106076"
+      ]
+    },
+    "e_b08d3bd6d4": {
+      "kind": "awning",
+      "covered_fraction": 0.2,
+      "confidence": 0.6,
+      "verified": true,
+      "image_ids": [
+        "144267674341740"
+      ]
+    },
+    "e_60da8e4b34": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "978814459593868"
+      ]
+    },
+    "e_0a7976200d": {
+      "kind": "awning",
+      "covered_fraction": 1.0,
+      "confidence": 0.7,
+      "verified": true,
+      "image_ids": [
+        "308712584189173"
+      ]
+    },
+    "e_786f41bb9b": {
+      "kind": "awning",
+      "covered_fraction": 0.5,
+      "confidence": 0.76,
+      "verified": true,
+      "image_ids": [
+        "291423245865788",
+        "338368334318729"
+      ]
+    }
+  }
+}
