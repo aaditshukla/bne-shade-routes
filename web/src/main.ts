@@ -64,11 +64,13 @@ const WIDE = matchMedia('(min-width: 900px)');
 const sheetCover = () =>
   WIDE.matches ? { top: 0, right: 0, bottom: 0, left: sheet.offsetLeft + sheet.offsetWidth } : { top: 0, right: 0, bottom: sheet.offsetHeight, left: 0 };
 // setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the cover really changed.
-new ResizeObserver(() => {
+let sheetMoving = false; // while the sheet animates, move the map once at the end, not every frame
+function fitSheet() {
   document.documentElement.style.setProperty('--sheet-h', `${sheet.offsetHeight}px`); // the 3D view ends above the sheet
   const p = map.getPadding(), c = sheetCover();
   if (p.bottom !== c.bottom || p.left !== c.left) map.setPadding(c);
-}).observe(sheet);
+}
+new ResizeObserver(() => sheetMoving || fitSheet()).observe(sheet);
 
 // Both pins drag to move that end of the route, like any maps app.
 function makePin(cls: string, label: string) {
@@ -375,28 +377,62 @@ suggestEl.onclick = (e) => {
 document.getElementById('trip')!.onclick = () => document.body.classList.remove('collapsed');
 
 // Phone: swipe down from the sheet's top (not the slider or route cards) to fold it to a one-line bar; tap or swipe
-// the bar up to bring back whatever was showing. Touch events, not pointer ones: the sheet scrolls, which cancels pointers.
+// the bar up to bring back whatever was showing. The sheet follows the finger down, then the box eases to its new height.
+// Touch events, not pointer ones: the sheet scrolls, which cancels pointers.
 const mini = document.getElementById('mini')!;
 const isMini = () => document.body.classList.contains('minimised');
-function minimise(on: boolean) {
+const STILL = matchMedia('(prefers-reduced-motion: reduce)');
+function minimise(on: boolean, dragged = 0) {
   const m = results.querySelector('[aria-pressed="true"] .mins')?.firstChild?.textContent;
   if (on) mini.textContent = to ? `→ ${to.label}${m ? ` · ${m} min in sun` : ''}` : 'Where to?';
+  const h0 = sheet.offsetHeight - dragged;
+  sheet.style.transform = '';
   document.body.classList.toggle('minimised', on);
+  if (STILL.matches) return;
+  sheetMoving = true;
+  sheet.style.overflow = 'hidden'; // no scrollbar flash while the box is smaller than its content
+  const h1 = sheet.offsetHeight;
+  sheet.animate([{ height: `${h0}px` }, { height: `${h1}px` }].map((k) => ({ ...k, boxSizing: 'border-box' })), {
+    duration: 260,
+    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  }).onfinish = () => {
+    sheetMoving = false;
+    sheet.style.overflow = '';
+    fitSheet();
+  };
 }
 mini.onclick = () => minimise(false);
 let swipeY: number | null = null;
+let dragY = 0;
 sheet.addEventListener('touchstart', (e) => {
   const top = sheet.scrollTop === 0 && (e.target as Element).closest('#grab, .title-block, #trip, .headline, label.slider');
-  swipeY = !WIDE.matches && e.touches.length === 1 && (isMini() || top) ? e.touches[0].clientY : null;
+  swipeY = !WIDE.matches && !sheetMoving && e.touches.length === 1 && (isMini() || top) ? e.touches[0].clientY : null;
+  dragY = 0;
 }, { passive: true });
+sheet.addEventListener('touchmove', (e) => {
+  if (swipeY == null || isMini()) return;
+  const dy = e.touches[0].clientY - swipeY;
+  if (dy <= 0 && !dragY) return; // an upward drag scrolls the sheet as usual
+  dragY = Math.max(0, dy);
+  e.preventDefault(); // the sheet moves, not its scroll
+  sheet.style.transition = 'none';
+  sheet.style.transform = `translateY(${dragY}px)`;
+});
 sheet.addEventListener('touchend', (e) => {
   if (swipeY == null) return;
   const dy = e.changedTouches[0].clientY - swipeY;
   swipeY = null;
   if (isMini() ? dy < -30 : dy > 40) {
     e.preventDefault(); // no click after a swipe, so the trip row doesn't also unfold
-    minimise(!isMini());
+    minimise(!isMini(), dragY);
+  } else if (dragY) {
+    sheet.style.transition = STILL.matches ? '' : 'transform 200ms ease-out'; // not far enough: spring back
+    sheet.style.transform = '';
   }
+});
+sheet.addEventListener('touchcancel', () => {
+  swipeY = null;
+  sheet.style.transform = '';
 });
 
 swapBtn.onclick = () => {
