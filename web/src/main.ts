@@ -303,6 +303,7 @@ function setEnd(end: End, place: Place) {
   if (end === 'from' && !to) setActive('to');
   show();
   document.body.classList.toggle('collapsed', !!to); // CSS folds the sheet on phones only
+  document.body.classList.remove('minimised');
   frame();
 }
 
@@ -372,6 +373,31 @@ suggestEl.onclick = (e) => {
 };
 
 document.getElementById('trip')!.onclick = () => document.body.classList.remove('collapsed');
+
+// Phone: swipe down from the sheet's top (not the slider or route cards) to fold it to a one-line bar; tap or swipe
+// the bar up to bring back whatever was showing. Touch events, not pointer ones: the sheet scrolls, which cancels pointers.
+const mini = document.getElementById('mini')!;
+const isMini = () => document.body.classList.contains('minimised');
+function minimise(on: boolean) {
+  const m = results.querySelector('[aria-pressed="true"] .mins')?.firstChild?.textContent;
+  if (on) mini.textContent = to ? `→ ${to.label}${m ? ` · ${m} min in sun` : ''}` : 'Where to?';
+  document.body.classList.toggle('minimised', on);
+}
+mini.onclick = () => minimise(false);
+let swipeY: number | null = null;
+sheet.addEventListener('touchstart', (e) => {
+  const top = sheet.scrollTop === 0 && (e.target as Element).closest('#grab, .title-block, #trip, .headline, label.slider');
+  swipeY = !WIDE.matches && e.touches.length === 1 && (isMini() || top) ? e.touches[0].clientY : null;
+}, { passive: true });
+sheet.addEventListener('touchend', (e) => {
+  if (swipeY == null) return;
+  const dy = e.changedTouches[0].clientY - swipeY;
+  swipeY = null;
+  if (isMini() ? dy < -30 : dy > 40) {
+    e.preventDefault(); // no click after a swipe, so the trip row doesn't also unfold
+    minimise(!isMini());
+  }
+});
 
 swapBtn.onclick = () => {
   if (!to) return;
