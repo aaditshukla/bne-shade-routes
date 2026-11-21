@@ -323,6 +323,26 @@ button {
   }
 }
 
+/* Laptop: the sheet becomes a left side panel and the map takes the rest. Keep 900px in sync with WIDE in main.ts. */
+@media (min-width: 900px) {
+  #map,
+  #three {
+    left: 380px;
+  }
+
+  #sheet {
+    top: 0;
+    right: auto;
+    box-sizing: border-box;
+    width: 380px;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: 4px 0 18px rgb(38 40 42 / 0.14);
+  }
+}
+
 .headline {
   margin: 12px 0 10px;
   font-size: 20px;

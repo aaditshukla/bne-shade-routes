@@ -53,9 +53,12 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-left')
 // Keep the venue centred in the part of the map the bottom sheet doesn't cover.
 const sheet = document.getElementById('sheet')!;
 const threeEl = document.getElementById('three')!;
-// setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the height really changed.
+// On a laptop the sheet is a side panel beside the map (see style.css), so it covers nothing.
+const WIDE = matchMedia('(min-width: 900px)');
+const sheetCover = () => (WIDE.matches ? 0 : sheet.offsetHeight);
+// setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the cover really changed.
 new ResizeObserver(() => {
-  if (map.getPadding().bottom !== sheet.offsetHeight) map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight });
+  if (map.getPadding().bottom !== sheetCover()) map.setPadding({ top: 0, left: 0, right: 0, bottom: sheetCover() });
 }).observe(sheet);
 
 // Both pins drag to move that end of the route, like any maps app.
@@ -252,7 +255,7 @@ const restoreInputs = () => {
 
 // Frame both routes when an end moves (not on slider moves, so the map doesn't jump while dragging).
 function frame() {
-  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight }); // the sheet just shrank back from search; don't wait for the observer
+  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheetCover() }); // the sheet just shrank back from search; don't wait for the observer
   const bounds = new maplibregl.LngLatBounds();
   for (const fc of Object.values(lines))
     for (const f of fc.features) if (f.geometry.type === 'LineString') for (const c of f.geometry.coordinates) bounds.extend(c as [number, number]);
