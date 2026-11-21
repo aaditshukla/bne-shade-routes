@@ -3,7 +3,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre builds its worker URL at runtime, so Vite never copies the file; ?url makes it ship.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import './style.css';
-import { createRouter, loadData, type Graph, type ShadeData } from './routing/index.ts';
+import { createRouter, loadData, type Graph, type Route, type ShadeData } from './routing/index.ts';
+import type { ShadeView } from './three/index.ts';
 import { PRESETS } from './ui/presets.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
@@ -12,9 +13,14 @@ import type { FeatureCollection } from 'geojson';
 let slot = slotAt(new Date());
 let alpha = 5; // shade hunger for the shadiest route
 let dest: string | null = null;
+let destLabel = '';
+// Shadow-study palette (see style.css): redline for the route in focus, dashed grey for the other.
+const INK = '#26282a';
+const RED = '#d7322c';
+const GREY = '#6e7275';
 const ROUTES = [
-  { id: 'shortest', label: 'Shortest', color: '#9ca3af' },
-  { id: 'shadiest', label: 'Shadiest', color: '#0f766e' },
+  { id: 'shortest', label: 'Shortest' },
+  { id: 'shadiest', label: 'Shadiest' },
 ] as const;
 type RouteId = (typeof ROUTES)[number]['id'];
 
@@ -32,6 +38,7 @@ const router = createRouter(graph, shade);
 const START = graph.venue.node;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
 const nodeAt = new Map(graph.nodes.map((n) => [n.id, [n.lon, n.lat] as [number, number]]));
+const edgeLength = new Map(graph.edges.map((e) => [e.id, e.length_m]));
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -42,22 +49,64 @@ const map = new maplibregl.Map({
   zoom: 16,
   attributionControl: false,
 });
-map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right');
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-left');
 // Keep the venue centred in the part of the map the bottom sheet doesn't cover.
 const sheet = document.getElementById('sheet')!;
-new ResizeObserver(() => map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight })).observe(sheet);
+const threeEl = document.getElementById('three')!;
+new ResizeObserver(() => {
+  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight });
+}).observe(sheet);
 
 const pin = document.createElement('div');
 pin.className = 'venue-pin';
 pin.setAttribute('aria-label', 'You are here: the venue');
 new maplibregl.Marker({ element: pin }).setLngLat(VENUE).addTo(map);
 
-const destPin = new maplibregl.Marker({ color: '#0f766e' });
+const destEl = document.createElement('div');
+destEl.className = 'dest-pin';
+destEl.setAttribute('aria-label', 'Destination');
+const destPin = new maplibregl.Marker({ element: destEl });
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
+// 3D view (W8): created on the first toggle; fed the same routes and slot as the 2D map.
+let view: ShadeView | null = null;
+let routes3d: { shortest: Route; shadiest: Route } | null = null;
 
 const fmtMin = (m: number) => m.toFixed(1);
+
+// A route as runs of shade and sun, in metres. Each edge splits into its shaded and sunny length,
+// so the strip's amber adds up to exactly the sun minutes on the card.
+function sunRuns(r: Route): { sun: boolean; m: number }[] {
+  const runs: { sun: boolean; m: number }[] = [];
+  for (const id of r.edges) {
+    const len = edgeLength.get(id) ?? 0;
+    const f = shade.sunFraction[id]?.[slot] ?? 1;
+    for (const [sun, m] of [[false, len * (1 - f)], [true, len * f]] as const) {
+      if (m <= 0) continue;
+      const last = runs[runs.length - 1];
+      if (last?.sun === sun) last.m += m;
+      else runs.push({ sun, m });
+    }
+  }
+  return runs;
+}
+const strip = (r: Route, total: number, scale: number) =>
+  `<span class="strip" style="width:${((total / scale) * 100).toFixed(1)}%">${sunRuns(r)
+    .map((x) => `<i${x.sun ? ' class="sun"' : ''} style="flex:0 0 ${((x.m / total) * 100).toFixed(2)}%"></i>`)
+    .join('')}</span>`;
+
+// Sheet states: the empty map asks for a place; a pick swaps the prompt for the comparison.
+const titleEl = document.getElementById('title')!;
+const stampEl = document.getElementById('stamp')!;
+const changeBtn = document.getElementById('change') as HTMLButtonElement;
+const pickEl = document.getElementById('pick')!;
+function setPicked(on: boolean) {
+  titleEl.textContent = on ? `To ${destLabel}` : 'Shade Router';
+  stampEl.hidden = on;
+  changeBtn.hidden = !on;
+  pickEl.hidden = on;
+}
 
 // Shadow overlay (W6): the slot's shadow file, or streets coloured by sunFraction if that file is missing.
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
@@ -114,6 +163,9 @@ function show() {
     };
     map.getSource<maplibregl.GeoJSONSource>(spec.id)?.setData(lines[spec.id]);
   }
+  const shortestRoute = same ? shady.r : short.r;
+  routes3d = shortestRoute && shady.r ? { shortest: shortestRoute, shadiest: shady.r } : null;
+  show3d();
   if (!shady.s || (!same && !short.s)) {
     results.innerHTML = `<p class="headline">No walking route to there.</p>`;
     return;
@@ -122,25 +174,45 @@ function show() {
   const extra = same ? 0 : Math.round(shady.s.walk_min - short.s!.walk_min);
   const less = same ? 0 : Math.round((1 - shady.s.sun_min / short.s!.sun_min) * 100);
   const headline = same
-    ? 'Already the shadiest way.'
-    : `Shadiest: ${less}% less sun for ${extra > 0 ? `${extra} min extra walk` : 'no extra walk'}.`;
-  const cards = (same ? [shady] : found).map(({ spec, s }) => `
-    <button class="card" data-route="${spec.id}">
-      <span class="card-label"><span class="swatch" style="background:${spec.color}"></span>${same ? 'Shortest and shadiest' : spec.label}</span>
-      <span class="big">${fmtMin(s!.sun_min)}</span> min in sun
-      <span class="card-sub">${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min walk</span>
+    ? 'The shortest way is already the shadiest.'
+    : `Shadiest way: <b>${less}% less sun</b> for ${extra > 0 ? `${extra} min extra` : 'no extra walk'}.`;
+  const shown = same ? [shady] : [shady, short]; // shadiest first: it's the answer
+  const scale = Math.max(...shown.map(({ s }) => s!.distance_m));
+  const rows = shown.map(({ spec, r, s }) => `
+    <button class="route" data-route="${spec.id}">
+      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}
+        <small>${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min</small></span>
+      <span class="mins">${fmtMin(s!.sun_min)}<small>min in sun</small></span>
+      ${strip(r!, s!.distance_m, scale)}
     </button>`);
-  results.innerHTML = `<p class="headline">${headline}</p><div class="cards">${cards.join('')}</div>`;
+  results.innerHTML = `<p class="headline">${headline}</p>${rows.join('')}`;
   select(same ? 'shadiest' : selected);
 }
 
-// Highlight one route: its card is pressed and its line sits on top at full strength.
+// Focus one route: its card is pressed, its key and line turn solid red and sit on top; the other goes dashed grey.
 function select(id: RouteId) {
   selected = id;
-  for (const c of results.querySelectorAll('[data-route]')) c.setAttribute('aria-pressed', String(c.getAttribute('data-route') === id));
+  for (const c of results.querySelectorAll('[data-route]')) {
+    const on = c.getAttribute('data-route') === id;
+    c.setAttribute('aria-pressed', String(on));
+    c.querySelector('.key')?.classList.toggle('dashed', !on);
+  }
+  show3d();
   if (!map.getLayer(id)) return; // map still loading; the load handler applies it
-  for (const { id: other } of ROUTES) map.setPaintProperty(other, 'line-opacity', other === id ? 1 : 0.4);
+  for (const { id: other } of ROUTES) {
+    const on = other === id;
+    map.setPaintProperty(other, 'line-color', on ? RED : GREY);
+    map.setPaintProperty(other, 'line-width', on ? 5 : 3.5);
+    map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
+    map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
+  }
   map.moveLayer(id);
+}
+
+// The 3D view draws its 'shadiest' route in red on top, so hand it the route in focus there.
+function show3d() {
+  if (!view || !routes3d) return view?.showRoutes(null);
+  view.showRoutes(selected === 'shadiest' ? routes3d : { shortest: routes3d.shadiest, shadiest: routes3d.shortest });
 }
 
 results.onclick = (e) => {
@@ -148,10 +220,12 @@ results.onclick = (e) => {
   if (card) select(card.getAttribute('data-route') as RouteId);
 };
 
-function pick(lonlat: [number, number]) {
+function pick(lonlat: [number, number], label = 'Dropped pin') {
   const picked = router.nearestNode(...lonlat);
   if (picked === START) return;
   dest = picked;
+  destLabel = label;
+  setPicked(true);
   show();
   // Frame both routes on a new pick (not on slider moves, so the map doesn't jump while dragging).
   const bounds = new maplibregl.LngLatBounds();
@@ -168,10 +242,25 @@ for (const p of PRESETS) {
   b.setAttribute('aria-pressed', 'false');
   b.onclick = () => {
     for (const c of chips.children) c.setAttribute('aria-pressed', String(c === b));
-    pick(p.lonlat);
+    pick(p.lonlat, p.label);
   };
   chips.append(b);
 }
+
+changeBtn.onclick = () => {
+  dest = null;
+  destPin.remove();
+  results.innerHTML = '';
+  for (const c of chips.children) c.setAttribute('aria-pressed', 'false');
+  for (const { id } of ROUTES) {
+    lines[id] = EMPTY;
+    map.getSource<maplibregl.GeoJSONSource>(id)?.setData(EMPTY);
+  }
+  routes3d = null;
+  show3d();
+  setPicked(false);
+  (chips.firstElementChild as HTMLElement | null)?.focus();
+};
 
 // Sliders: any change recomputes both routes and the card.
 const timeInput = document.getElementById('time') as HTMLInputElement;
@@ -184,23 +273,98 @@ function readSliders() {
   const alt = shade.sun[slot].alt_deg;
   timeLabel.textContent = `${slotTime(slot)} · ${alt > 0 ? `sun ${Math.round(alt)}° up` : 'sun down'}`;
   alphaLabel.textContent = String(alpha);
+  for (const el of [timeInput, alphaInput]) el.style.setProperty('--p', `${((el.valueAsNumber - +el.min) / (+el.max - +el.min)) * 100}%`);
   showShadows();
+  view?.setSlot(slot);
   show();
 }
 timeInput.value = String(slot);
 timeInput.oninput = alphaInput.oninput = readSliders;
 readSliders();
 
+// 2D/3D toggle (laptop-only: CSS hides it on touch). three.js and the building/tree files load on first open.
+const toggle = document.getElementById('view-toggle') as HTMLButtonElement;
+function set3d(on: boolean) {
+  toggle.setAttribute('aria-pressed', String(on));
+  toggle.textContent = on ? '2D' : '3D';
+  threeEl.hidden = !on;
+}
+toggle.onclick = async () => {
+  const on = toggle.getAttribute('aria-pressed') !== 'true';
+  set3d(on);
+  if (!on || view) return;
+  toggle.disabled = true;
+  try {
+    const getJson = (f: string) => fetch(`${import.meta.env.BASE_URL}data/${f}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${f}: HTTP ${r.status}`))));
+    const [{ createShadeView }, buildings, trees] = await Promise.all([import('./three/index.ts'), getJson('buildings.geojson'), getJson('trees.geojson')]);
+    view = createShadeView(threeEl, { bbox: graph.bbox, sun: shade.sun, buildings, trees });
+    view.setSlot(slot);
+    show3d();
+  } catch (err) {
+    console.error('3D view failed to load', err);
+    set3d(false);
+  } finally {
+    toggle.disabled = false;
+  }
+};
+
 map.on('click', (e) => {
   for (const c of chips.children) c.setAttribute('aria-pressed', 'false');
   pick([e.lngLat.lng, e.lngLat.lat]);
 });
 
+// North: the shadow study only reads with north known. The arrow turns with the map; tap to reset.
+const northBtn = document.getElementById('north')!;
+const northArrow = northBtn.querySelector('svg')!;
+map.on('rotate', () => (northArrow.style.transform = `rotate(${-map.getBearing()}deg)`));
+northBtn.onclick = () => map.resetNorth();
+
+// 45° hatch tile for shadows, drawn once at 2× for sharp lines on retina screens.
+function hatchImage() {
+  const n = 16;
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = INK;
+  g.lineWidth = 2;
+  g.beginPath();
+  for (const o of [-n, 0, n]) {
+    g.moveTo(o, n);
+    g.lineTo(o + n, 0);
+  }
+  g.stroke();
+  return g.getImageData(0, 0, n, n);
+}
+
 map.on('load', () => {
+  // MapLibre expands the attribution when source metadata lands (after load); fold it behind its (i) once tiles settle.
+  map.once('idle', () => document.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show'));
+  // Drafting-white ground under the basemap.
+  if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', '#fafaf8');
   // Shadows sit under the basemap's labels; routes go on top of everything.
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+  map.addImage('hatch', hatchImage(), { pixelRatio: 2 });
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': '#1e293b', 'fill-opacity': 0.35 } }, firstLabel);
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
+  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
+  map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
+  // Street trees as drawn canopy outlines, to scale (metres per pixel at Brisbane's latitude).
+  map.addSource('trees', { type: 'geojson', data: `${import.meta.env.BASE_URL}data/trees.geojson` });
+  map.addLayer(
+    {
+      id: 'trees',
+      type: 'circle',
+      source: 'trees',
+      paint: {
+        'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 14, ['/', ['coalesce', ['get', 'canopy_radius_m'], 4], 8.47], 20, ['/', ['coalesce', ['get', 'canopy_radius_m'], 4], 0.1324]],
+        'circle-color': '#fff',
+        'circle-opacity': 0.6,
+        'circle-stroke-color': INK,
+        'circle-stroke-width': 1,
+      },
+    },
+    firstLabel,
+  );
   map.addSource('streets', { type: 'geojson', data: streetData });
   map.addLayer(
     {
@@ -208,18 +372,18 @@ map.on('load', () => {
       type: 'line',
       source: 'streets',
       layout: { 'line-cap': 'round' },
-      paint: { 'line-width': 4, 'line-opacity': 0.8, 'line-color': ['interpolate', ['linear'], ['get', 'sun'], 0, '#64748b', 1, '#f59e0b'] },
+      paint: { 'line-width': 4, 'line-opacity': 0.8, 'line-color': ['interpolate', ['linear'], ['get', 'sun'], 0, INK, 1, '#f2b33d'] },
     },
     firstLabel,
   );
-  for (const { id, color } of ROUTES) {
+  for (const { id } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
     map.addLayer({
       id,
       type: 'line',
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': color, 'line-width': id === 'shadiest' ? 6 : 5 },
+      paint: { 'line-color': GREY }, // select() below styles both lines
     });
   }
   select(selected);

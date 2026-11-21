@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Shade Router</title>
     <meta name="description" content="Walking directions that keep you in the shade around Fortitude Valley." />
-    <meta name="theme-color" content="#0f766e" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f766e'/%3E%3Cpath d='M16 2a14 14 0 0 1 0 28z' fill='%231f2937'/%3E%3C/svg%3E" />
+    <meta name="theme-color" content="#FAFAF8" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3Cpattern id='h' width='4' height='4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'%3E%3Cpath d='M0 0v4' stroke='%2326282A' stroke-width='1.4'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='%23FAFAF8'/%3E%3Cpath d='M4 28 20 4h8L12 28z' fill='url(%23h)'/%3E%3Cpath d='M6 26 26 6' stroke='%23D7322C' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <!-- Start the data and tile fetches while the 300 KB bundle is still downloading. -->
     <link rel="preload" href="%BASE_URL%data/graph.json" as="fetch" crossorigin />
     <link rel="preload" href="%BASE_URL%data/shade.json" as="fetch" crossorigin />
@@ -14,13 +14,31 @@
   </head>
   <body>
     <div id="map"></div>
-    <section id="sheet">
-      <h1>Shade Router</h1>
-      <p>Tap the map or pick a place. Dark = shade.</p>
-      <div id="presets"></div>
-      <label class="slider"><span>Time</span><output id="time-label"></output><input id="time" type="range" min="0" max="50" step="1" /></label>
-      <label class="slider"><span>Shade hunger</span><output id="alpha-label"></output><input id="alpha" type="range" min="0" max="10" step="1" value="5" /></label>
-      <div id="results"><p class="headline">Loading map data…</p></div>
+    <div id="three" hidden></div>
+    <div id="map-tools">
+      <button id="north" class="tool" aria-label="Point the map north">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 17 13H7z" fill="#D7322C" /><path d="M12 21 7 13h10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>
+      </button>
+      <button id="view-toggle" class="tool" aria-pressed="false" aria-label="3D view">3D</button>
+    </div>
+    <section id="sheet" aria-label="Route">
+      <div class="title-block">
+        <h1 id="title">Shade Router</h1>
+        <span id="stamp">21 Nov 2026</span>
+        <button id="change" hidden>Change</button>
+      </div>
+      <div id="pick">
+        <p class="prompt">Tap the map or pick a place</p>
+        <div id="presets"></div>
+      </div>
+      <div id="results" aria-live="polite"><p class="headline">Loading map data…</p></div>
+      <label class="slider" for="time"><span>Time</span><output id="time-label"></output></label>
+      <input id="time" type="range" min="0" max="50" step="1" />
+      <details id="hunger">
+        <summary><span>Shade hunger</span><output id="alpha-label"></output></summary>
+        <input id="alpha" type="range" min="0" max="10" step="1" value="5" aria-label="Shade hunger" />
+        <p class="hint">Higher walks further for shade.</p>
+      </details>
     </section>
     <script type="module" src="/src/main.ts"></script>
   </body>

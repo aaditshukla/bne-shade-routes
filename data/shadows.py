@@ -236,6 +236,13 @@ def main():
     cx, cy = TO_M.transform([minlon, minlon, maxlon, maxlon], [minlat, maxlat, minlat, maxlat])
     bounds = (min(cx) - SHADOW_MARGIN_M, min(cy) - SHADOW_MARGIN_M, max(cx) + SHADOW_MARGIN_M, max(cy) + SHADOW_MARGIN_M)
     clip = box(*bounds)
+    # also stay inside the contract's degree box (same arithmetic as validate.py, shrunk by ~0.1 m so 6-decimal
+    # rounding cannot push a vertex over): the metre box and the degree box differ by a fraction of a metre
+    lat_c = (minlat + maxlat) / 2
+    dlat, dlon = SHADOW_MARGIN_M / 111_000.0 - 1e-6, SHADOW_MARGIN_M / (111_320.0 * math.cos(math.radians(lat_c))) - 1e-6
+    dx, dy = TO_M.transform([minlon - dlon, minlon - dlon, maxlon + dlon, maxlon + dlon],
+                            [minlat - dlat, maxlat + dlat, minlat - dlat, maxlat + dlat])
+    clip = clip.intersection(Polygon(zip(dx[:2] + dx[:1:-1], dy[:2] + dy[:1:-1])))
 
     fractions = np.zeros((N_SLOTS, len(edge_ids)))
     shadow_1630 = None
@@ -281,6 +288,11 @@ def main():
     for i in (12, 24, 42):
         col = fractions[i]
         print(f"{SLOTS[i]}: mean sunFraction {col.mean():.2f}, full shade (<0.05) {np.mean(col < 0.05):.0%}, full sun (>0.95) {np.mean(col > 0.95):.0%}")
+        if np.all(col < 0.05) or np.all(col > 0.95):
+            # all 0 or all 1 means an azimuth/CRS bug on real data; on a handful of fixture
+            # buildings it is just sparse input, so warn loudly instead of aborting
+            print(f"WARNING: every edge is {'full shade' if np.all(col < 0.05) else 'full sun'} at {SLOTS[i]}. "
+                  f"On real inputs this means an azimuth or CRS bug: investigate before shipping.", file=sys.stderr)
     print(f"wrote {out} ({len(edge_ids)} edges x {N_SLOTS} slots), {args.png}; {time.time() - t0:.1f}s")
 
 
