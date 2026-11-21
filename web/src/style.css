@@ -130,6 +130,42 @@ button {
   display: block;
 }
 
+/* Landmark pins: an ink dot with the name beside it; the hit area grows to 44 px for a thumb. */
+.landmark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  color: var(--ink);
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landmark::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.landmark::after {
+  content: '';
+  position: absolute;
+  inset: -14px -6px;
+}
+
 /* Bottom sheet: everything the thumb needs, nothing the map needs. */
 #sheet {
   position: fixed;

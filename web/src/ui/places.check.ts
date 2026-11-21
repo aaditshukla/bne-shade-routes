@@ -1,6 +1,7 @@
 // Self-check: npm run check:places
 import assert from 'node:assert/strict';
 import { buildPlaces, searchPlaces } from './places.ts';
+import { LANDMARKS } from './landmarks.ts';
 import type { Graph } from '../routing/index.ts';
 
 // A plus-shaped junction: Ann St runs west–east through j, Brunswick St north–south.
@@ -29,5 +30,8 @@ assert.deepEqual(searchPlaces(places, '  '), []);
 assert.deepEqual(searchPlaces(places, 'Ann Street & Brunswick Street').map((p) => p.label), ['Ann Street & Brunswick Street']); // a full label finds itself
 assert.equal(searchPlaces(places, 'tanda')[0].node, 'w');
 assert.equal(searchPlaces(places, 'venue')[0].node, 'w');
+
+// Every landmark sits inside the demo bbox (CLAUDE.md), with the app's ≈30 m of slack.
+for (const l of LANDMARKS) assert.ok(l.lon >= 153.02849 - 0.0003 && l.lon <= 153.03455 + 0.0003 && l.lat >= -27.46277 - 0.0003 && l.lat <= -27.45735 + 0.0003, l.name);
 
 console.log('places self-check passed');

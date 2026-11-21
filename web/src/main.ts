@@ -8,6 +8,7 @@ import type { ShadeView } from './three/index.ts';
 import { buildPlaces, searchPlaces, type Place } from './ui/places.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
+import { LANDMARKS } from './ui/landmarks.ts';
 import type { FeatureCollection } from 'geojson';
 
 let slot = slotAt(new Date());
@@ -34,6 +35,9 @@ const { graph, shade } = data;
 results.innerHTML = '';
 const router = createRouter(graph, shade);
 const places = buildPlaces(graph);
+// Landmarks are searchable too, right after the venue; they route to the nearest street node.
+const landmarks = LANDMARKS.map((l) => ({ label: l.name, node: router.nearestNode(l.lon, l.lat) }));
+places.splice(1, 0, ...landmarks);
 let from: Place = places[0]; // the venue
 let to: Place | null = null;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
@@ -74,6 +78,20 @@ function makePin(cls: string, label: string) {
 }
 const startPin = makePin('venue-pin', 'Start').setLngLat(VENUE).addTo(map);
 const destPin = makePin('dest-pin', 'Destination');
+// Landmark pins: tap one to make it the end you're setting (the destination, unless you're editing From).
+LANDMARKS.forEach((l, i) => {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'landmark';
+  el.textContent = l.name;
+  el.onclick = (e) => {
+    e.stopPropagation(); // not a map tap too
+    const end = active;
+    setEnd(end, landmarks[i]);
+    if (end === 'from') setActive('to');
+  };
+  new maplibregl.Marker({ element: el, anchor: 'left', offset: [-5, 0] }).setLngLat([l.lon, l.lat]).addTo(map);
+});
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
