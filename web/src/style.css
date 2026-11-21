@@ -358,6 +358,49 @@ button {
   }
 }
 
+/* Phone, once a route is up: the sheet folds to the trip, the route cards and the slider so the map has room.
+   Tapping the trip opens it again. */
+#trip {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .collapsed .title-block,
+  .collapsed #pick,
+  .collapsed #hunger,
+  .collapsed .route-meta {
+    display: none;
+  }
+
+  .collapsed #trip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--ground);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+  }
+
+  #trip-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #trip svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+  }
+}
+
 /* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
    Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {

@@ -167,6 +167,7 @@ function show() {
   const a = from.node;
   const b = to.node;
   destPin.setLngLat(nodeAt.get(b)!).addTo(map);
+  tripText.textContent = `${from.label} → ${to.label}`;
   if (a === b) {
     clearRoutes();
     results.innerHTML = `<p class="headline">Start and destination are the same spot.</p>`;
@@ -240,7 +241,9 @@ function select(id: RouteId) {
     map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
     map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
     map.setLayoutProperty(`${other}-sun`, 'visibility', on ? 'visible' : 'none');
+    map.setLayoutProperty(`${other}-case`, 'visibility', on ? 'visible' : 'none');
   }
+  map.moveLayer(`${id}-case`);
   map.moveLayer(id);
   map.moveLayer(`${id}-sun`);
 }
@@ -263,6 +266,7 @@ const inputs = { from: document.getElementById('from') as HTMLInputElement, to: 
 const suggestEl = document.getElementById('suggest')!;
 const swapBtn = document.getElementById('swap') as HTMLButtonElement;
 const noticeEl = document.getElementById('notice')!;
+const tripText = document.getElementById('trip-text')!;
 const MY_LOCATION = 'My location';
 let active: End = 'to';
 let options: Place[] = [];
@@ -297,6 +301,7 @@ function setEnd(end: End, place: Place) {
   restoreInputs();
   if (end === 'from' && !to) setActive('to');
   show();
+  document.body.classList.toggle('collapsed', !!to); // CSS folds the sheet on phones only
   frame();
 }
 
@@ -364,6 +369,8 @@ suggestEl.onclick = (e) => {
   const i = (e.target as Element).closest('[data-i]')?.getAttribute('data-i');
   if (i != null) choose(options[+i]);
 };
+
+document.getElementById('trip')!.onclick = () => document.body.classList.remove('collapsed');
 
 swapBtn.onclick = () => {
   if (!to) return;
@@ -437,12 +444,12 @@ northBtn.onclick = () => map.resetNorth();
 
 // 45° hatch tile for shadows, drawn once at 2× for sharp lines on retina screens.
 function hatchImage() {
-  const n = 16;
+  const n = 24; // 12 px apart on screen: open enough to read on a phone
   const c = document.createElement('canvas');
   c.width = c.height = n;
   const g = c.getContext('2d')!;
   g.strokeStyle = INK;
-  g.lineWidth = 2;
+  g.lineWidth = 3;
   g.beginPath();
   for (const o of [-n, 0, n]) {
     g.moveTo(o, n);
@@ -461,9 +468,8 @@ map.on('load', () => {
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
   map.addImage('hatch', hatchImage(), { pixelRatio: 2 });
   map.addSource('shadows', { type: 'geojson', data: shadowData });
-  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
-  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
-  map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
+  map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.18, 'fill-antialias': false } }, firstLabel);
+  map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.4 } }, firstLabel);
   // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
   if (map.getLayer('building')) {
     map.moveLayer('building', firstLabel);
@@ -500,6 +506,14 @@ map.on('load', () => {
   );
   for (const { id } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
+    // Dark casing under the route in focus, so its red and amber both stand off the pale map.
+    map.addLayer({
+      id: `${id}-case`,
+      type: 'line',
+      source: id,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': INK, 'line-width': 10 },
+    });
     map.addLayer({
       id,
       type: 'line',
@@ -507,13 +521,13 @@ map.on('load', () => {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': GREY }, // select() below styles both lines
     });
-    // Amber core on the sunny streets of the route in focus, as strong as the street is sunny.
+    // Sunny streets of the route in focus turn amber across the full width, as strong as the street is sunny.
     map.addLayer({
       id: `${id}-sun`,
       type: 'line',
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': SUN, 'line-width': 4, 'line-opacity': ['get', 'sun'] },
+      paint: { 'line-color': SUN, 'line-width': 7, 'line-opacity': ['get', 'sun'] },
     });
   }
   select(selected);
