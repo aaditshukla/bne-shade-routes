@@ -240,7 +240,9 @@ function select(id: RouteId) {
     map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
     map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
     map.setLayoutProperty(`${other}-sun`, 'visibility', on ? 'visible' : 'none');
+    map.setLayoutProperty(`${other}-case`, 'visibility', on ? 'visible' : 'none');
   }
+  map.moveLayer(`${id}-case`);
   map.moveLayer(id);
   map.moveLayer(`${id}-sun`);
 }
@@ -499,6 +501,14 @@ map.on('load', () => {
   );
   for (const { id } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
+    // Dark casing under the route in focus, so its red and amber both stand off the pale map.
+    map.addLayer({
+      id: `${id}-case`,
+      type: 'line',
+      source: id,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': INK, 'line-width': 10 },
+    });
     map.addLayer({
       id,
       type: 'line',
@@ -506,13 +516,13 @@ map.on('load', () => {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': GREY }, // select() below styles both lines
     });
-    // Amber core on the sunny streets of the route in focus, as strong as the street is sunny.
+    // Sunny streets of the route in focus turn amber across the full width, as strong as the street is sunny.
     map.addLayer({
       id: `${id}-sun`,
       type: 'line',
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': SUN, 'line-width': 4, 'line-opacity': ['get', 'sun'] },
+      paint: { 'line-color': SUN, 'line-width': 7, 'line-opacity': ['get', 'sun'] },
     });
   }
   select(selected);
