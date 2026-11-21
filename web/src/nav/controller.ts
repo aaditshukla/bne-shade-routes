@@ -12,7 +12,7 @@ import { OffRouteMonitor } from './offroute.ts';
 import { paceMs } from './pace.ts';
 import { GeolocationSource, keepAwake, SimSource, type PositionSource } from './position.ts';
 import { advance, buildNavPath, hasArrived, type NavPath, type Progress } from './progress.ts';
-import { describeShade, remainingSunMin, shadeAhead, sunRuns, WALK_SPEED_MS } from './shade.ts';
+import { describeShade, remainingSunMin, shadeAhead, sunRuns, WALK_SPEED_MS, worthSwitching } from './shade.ts';
 
 export interface NavDeps {
   map: MapLibreMap;
@@ -74,6 +74,7 @@ export function createNavigation(d: NavDeps): Navigation {
   let walkedTotal = 0;
   let sunMetres = 0;
   let spokenIdx = -1;
+  let offerSlot = -1; // the slot we last looked for a better route in
 
   // Camera.
   let follow = true;
@@ -175,6 +176,7 @@ export function createNavigation(d: NavDeps): Navigation {
     prog = null;
     spokenIdx = -1;
     stripKey = '';
+    offerSlot = -1;
     drawRoute();
   }
 
@@ -197,6 +199,40 @@ export function createNavigation(d: NavDeps): Navigation {
     say(why === 'start' ? 'Routing from where you are' : 'Rerouting');
     prog = advance(nav, f, null);
     render(f);
+  }
+
+  // The shade moves with the clock: when the slot changes (or the plan was for another time than now), look for a
+  // shadier way from the next junction on. It is only ever offered, never switched silently.
+  function maybeOffer(slot: number) {
+    if (!prog) return;
+    const idx = legs.findIndex((l) => prog!.walked_m < l.end_m);
+    if (idx < 0 || idx >= legs.length - 1) return; // on the last street: nothing to choose
+    const alt = router.route(legs[idx].to, destNode, d.getAlpha(), slot);
+    const ahead = route.edges.slice(idx + 1);
+    if (!alt || alt.edges.join() === ahead.join()) return;
+    const cur = router.summarize({ nodes: route.nodes.slice(idx + 1), edges: ahead, coords: [] }, slot);
+    const next = router.summarize(alt, slot);
+    if (!worthSwitching(cur, next)) return;
+    const extra = Math.round(next.walk_min - cur.walk_min);
+    ui.toast(`A shadier way: ${(cur.sun_min - next.sun_min).toFixed(1)} min less sun${extra > 0 ? `, ${extra} min longer` : ''}`, {
+      ms: 15_000,
+      action: {
+        label: 'Switch',
+        run() {
+          // Keep the street being walked, then the new way; the walked part is unchanged, so progress carries over.
+          const keep = prog;
+          const k = nav.path.cum.findIndex((c) => c >= legs[idx].end_m - 1e-6);
+          setRoute({
+            nodes: [...route.nodes.slice(0, idx + 1), ...alt.nodes],
+            edges: [...route.edges.slice(0, idx + 1), ...alt.edges],
+            coords: [...route.coords.slice(0, k + 1), ...alt.coords.slice(1)],
+          });
+          prog = keep;
+          offerSlot = slot;
+          if (lastFix) render(lastFix);
+        },
+      },
+    });
   }
 
   function onFix(f: Fix) {
@@ -269,6 +305,11 @@ export function createNavigation(d: NavDeps): Navigation {
     drawPuck(at, f.accuracy_m, heading);
     drawWalked(prog.walked_m);
     moveCamera(at, heading);
+
+    if (slot !== offerSlot) {
+      offerSlot = slot;
+      maybeOffer(slot);
+    }
 
     if (i !== spokenIdx && toNext <= 45 && m.kind !== 'arrive') {
       spokenIdx = i;

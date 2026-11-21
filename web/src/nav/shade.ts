@@ -61,3 +61,8 @@ export function describeShade(a: ShadeAhead | null): string | null {
   if (a.now === 'sun') return a.until_m == null ? 'Sun for the rest of the way' : `Shade in ${roundTo(a.until_m)} m`;
   return a.until_m == null ? 'Shade all the way' : `In shade for the next ${roundTo(a.until_m)} m`;
 }
+
+/** Is the other route worth offering mid-walk? At least ~25 s less sun, for no more than 1.5 min extra walking. */
+export function worthSwitching(current: { sun_min: number; walk_min: number }, other: { sun_min: number; walk_min: number }): boolean {
+  return other.sun_min <= current.sun_min - 0.4 && other.walk_min <= current.walk_min + 1.5;
+}

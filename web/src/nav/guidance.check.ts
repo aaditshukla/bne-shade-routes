@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Leg } from './legs.ts';
 import { OffRouteMonitor } from './offroute.ts';
 import { paceMs } from './pace.ts';
-import { describeShade, remainingSunMin, shadeAhead, sunRuns } from './shade.ts';
+import { describeShade, remainingSunMin, shadeAhead, sunRuns, worthSwitching } from './shade.ts';
 
 const near = (a: number, b: number, tol = 1e-9) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
 
@@ -84,5 +84,10 @@ near(paceMs(10, 10), 1.3);
 near(paceMs(100, 60), 100 / 60);
 near(paceMs(500, 100), 2);
 near(paceMs(40, 100), 0.8);
+
+// Offering a shadier way mid-walk: a real saving, without a long detour.
+assert.ok(worthSwitching({ sun_min: 2, walk_min: 5 }, { sun_min: 1.5, walk_min: 6 }));
+assert.ok(!worthSwitching({ sun_min: 2, walk_min: 5 }, { sun_min: 1.8, walk_min: 5 }), 'too small a saving');
+assert.ok(!worthSwitching({ sun_min: 2, walk_min: 5 }, { sun_min: 0.5, walk_min: 7 }), 'too long a detour');
 
 console.log('nav guidance self-check passed');
