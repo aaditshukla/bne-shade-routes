@@ -82,13 +82,11 @@ export function createNavBar(): NavBar {
   return {
     show(on) {
       banner.hidden = bar.hidden = !on;
-      stripEl.hidden = false;
-      if (!on) {
-        recenterBtn.hidden = toastEl.hidden = true;
-        summaryEl.hidden = true;
-        statsEl.hidden = false;
-        endBtn.textContent = 'End';
-      }
+      // Nothing to show in the stats until the first fix lands: they appear with stats().
+      statsEl.hidden = stripEl.hidden = true;
+      summaryEl.hidden = true;
+      endBtn.textContent = 'End';
+      if (!on) recenterBtn.hidden = toastEl.hidden = true;
       sync();
     },
     banner(b) {
@@ -106,6 +104,7 @@ export function createNavBar(): NavBar {
       banner.classList.toggle('warn', !!b.warn);
     },
     stats(s) {
+      statsEl.hidden = stripEl.hidden = false;
       $('nav-arrive').textContent = s.arrive;
       $('nav-left').textContent = s.left;
       $('nav-sun').textContent = s.sun;
@@ -122,10 +121,9 @@ export function createNavBar(): NavBar {
     },
     summary(s) {
       summaryEl.hidden = !s;
-      statsEl.hidden = !!s;
-      stripEl.hidden = !!s;
       endBtn.textContent = s ? 'Done' : 'End';
       if (s) {
+        statsEl.hidden = stripEl.hidden = true;
         $('nav-summary-line').textContent = s.line;
         $('nav-summary-sun').textContent = s.sun;
       }
