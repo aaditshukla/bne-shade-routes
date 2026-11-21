@@ -464,6 +464,12 @@ map.on('load', () => {
   map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
   map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
   map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
+  // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
+  if (map.getLayer('building')) {
+    map.moveLayer('building', firstLabel);
+    map.setPaintProperty('building', 'fill-color', '#d4d3cc');
+    map.setPaintProperty('building', 'fill-outline-color', INK);
+  }
   // Street trees as drawn canopy outlines, to scale (metres per pixel at Brisbane's latitude).
   map.addSource('trees', { type: 'geojson', data: `${import.meta.env.BASE_URL}data/trees.geojson` });
   map.addLayer(
