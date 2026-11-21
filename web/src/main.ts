@@ -5,15 +5,13 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import './style.css';
 import { createRouter, loadData, type Graph, type Route, type ShadeData } from './routing/index.ts';
 import type { ShadeView } from './three/index.ts';
-import { PRESETS } from './ui/presets.ts';
+import { buildPlaces, searchPlaces, type Place } from './ui/places.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
 import type { FeatureCollection } from 'geojson';
 
 let slot = slotAt(new Date());
 let alpha = 5; // shade hunger for the shadiest route
-let dest: string | null = null;
-let destLabel = '';
 // Shadow-study palette (see style.css): redline for the route in focus, dashed grey for the other.
 const INK = '#26282a';
 const RED = '#d7322c';
@@ -35,7 +33,9 @@ try {
 const { graph, shade } = data;
 results.innerHTML = '';
 const router = createRouter(graph, shade);
-const START = graph.venue.node;
+const places = buildPlaces(graph);
+let from: Place = places[0]; // the venue
+let to: Place | null = null;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
 const nodeAt = new Map(graph.nodes.map((n) => [n.id, [n.lon, n.lat] as [number, number]]));
 const edgeLength = new Map(graph.edges.map((e) => [e.id, e.length_m]));
@@ -53,19 +53,20 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-left')
 // Keep the venue centred in the part of the map the bottom sheet doesn't cover.
 const sheet = document.getElementById('sheet')!;
 const threeEl = document.getElementById('three')!;
+// setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the height really changed.
 new ResizeObserver(() => {
-  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight });
+  if (map.getPadding().bottom !== sheet.offsetHeight) map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight });
 }).observe(sheet);
 
-const pin = document.createElement('div');
-pin.className = 'venue-pin';
-pin.setAttribute('aria-label', 'You are here: the venue');
-new maplibregl.Marker({ element: pin }).setLngLat(VENUE).addTo(map);
-
-const destEl = document.createElement('div');
-destEl.className = 'dest-pin';
-destEl.setAttribute('aria-label', 'Destination');
-const destPin = new maplibregl.Marker({ element: destEl });
+// Both pins drag to move that end of the route, like any maps app.
+function makePin(cls: string, label: string) {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.setAttribute('aria-label', label);
+  return new maplibregl.Marker({ element: el, draggable: true });
+}
+const startPin = makePin('venue-pin', 'Start').setLngLat(VENUE).addTo(map);
+const destPin = makePin('dest-pin', 'Destination');
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
@@ -96,18 +97,6 @@ const strip = (r: Route, total: number, scale: number) =>
     .map((x) => `<i${x.sun ? ' class="sun"' : ''} style="flex:0 0 ${((x.m / total) * 100).toFixed(2)}%"></i>`)
     .join('')}</span>`;
 
-// Sheet states: the empty map asks for a place; a pick swaps the prompt for the comparison.
-const titleEl = document.getElementById('title')!;
-const stampEl = document.getElementById('stamp')!;
-const changeBtn = document.getElementById('change') as HTMLButtonElement;
-const pickEl = document.getElementById('pick')!;
-function setPicked(on: boolean) {
-  titleEl.textContent = on ? `To ${destLabel}` : 'Shade Router';
-  stampEl.hidden = on;
-  changeBtn.hidden = !on;
-  pickEl.hidden = on;
-}
-
 // Shadow overlay (W6): the slot's shadow file, or streets coloured by sunFraction if that file is missing.
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 let shadowData = EMPTY;
@@ -137,12 +126,29 @@ async function showShadows() {
   else setOverlay(EMPTY, streetsBySun());
 }
 
+function clearRoutes() {
+  for (const { id } of ROUTES) {
+    lines[id] = EMPTY;
+    map.getSource<maplibregl.GeoJSONSource>(id)?.setData(EMPTY);
+  }
+  routes3d = null;
+  show3d();
+}
+
 function show() {
-  const to = dest;
+  startPin.setLngLat(nodeAt.get(from.node)!);
+  swapBtn.disabled = !to;
   if (!to) return;
-  destPin.setLngLat(nodeAt.get(to)!).addTo(map);
+  const a = from.node;
+  const b = to.node;
+  destPin.setLngLat(nodeAt.get(b)!).addTo(map);
+  if (a === b) {
+    clearRoutes();
+    results.innerHTML = `<p class="headline">Start and destination are the same spot.</p>`;
+    return;
+  }
   const found = ROUTES.map((spec) => {
-    const r = router.route(START, to, spec.id === 'shortest' ? 0 : alpha, slot);
+    const r = router.route(a, b, spec.id === 'shortest' ? 0 : alpha, slot);
     return { spec, r, s: r && router.summarize(r, slot) };
   });
 
@@ -220,47 +226,126 @@ results.onclick = (e) => {
   if (card) select(card.getAttribute('data-route') as RouteId);
 };
 
-function pick(lonlat: [number, number], label = 'Dropped pin') {
-  const picked = router.nearestNode(...lonlat);
-  if (picked === START) return;
-  dest = picked;
-  destLabel = label;
-  setPicked(true);
-  show();
-  // Frame both routes on a new pick (not on slider moves, so the map doesn't jump while dragging).
+// From/To fields. Typing searches street names and junctions; a map tap or a pin drag fills the
+// active field (To until you touch From). Everything stays inside the bbox: there is no live geocoder.
+type End = 'from' | 'to';
+const inputs = { from: document.getElementById('from') as HTMLInputElement, to: document.getElementById('to') as HTMLInputElement };
+const suggestEl = document.getElementById('suggest')!;
+const swapBtn = document.getElementById('swap') as HTMLButtonElement;
+const noticeEl = document.getElementById('notice')!;
+const MY_LOCATION = 'My location';
+let active: End = 'to';
+let options: Place[] = [];
+
+function notice(msg: string) {
+  noticeEl.textContent = msg;
+  noticeEl.hidden = !msg;
+}
+function setActive(end: End) {
+  active = end;
+  for (const k of ['from', 'to'] as const) inputs[k].closest('.field')!.classList.toggle('active', k === end);
+}
+const restoreInputs = () => {
+  inputs.from.value = from.label;
+  inputs.to.value = to?.label ?? '';
+};
+
+// Frame both routes when an end moves (not on slider moves, so the map doesn't jump while dragging).
+function frame() {
+  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheet.offsetHeight }); // the sheet just shrank back from search; don't wait for the observer
   const bounds = new maplibregl.LngLatBounds();
   for (const fc of Object.values(lines))
     for (const f of fc.features) if (f.geometry.type === 'LineString') for (const c of f.geometry.coordinates) bounds.extend(c as [number, number]);
   if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: { top: 80, bottom: 48, left: 48, right: 48 }, maxZoom: 17 }); // top leaves room for the pin
+  else map.easeTo({ center: nodeAt.get(from.node)! });
 }
 
-// Preset chips: aria-pressed marks the active one; a map tap clears it.
-const chips = document.getElementById('presets')!;
-for (const p of PRESETS) {
-  const b = document.createElement('button');
-  b.textContent = p.label;
-  b.setAttribute('aria-pressed', 'false');
-  b.onclick = () => {
-    for (const c of chips.children) c.setAttribute('aria-pressed', String(c === b));
-    pick(p.lonlat, p.label);
-  };
-  chips.append(b);
+function setEnd(end: End, place: Place) {
+  if (end === 'from') from = place;
+  else to = place;
+  notice('');
+  restoreInputs();
+  if (end === 'from' && !to) setActive('to');
+  show();
+  frame();
 }
 
-changeBtn.onclick = () => {
-  dest = null;
-  destPin.remove();
-  results.innerHTML = '';
-  for (const c of chips.children) c.setAttribute('aria-pressed', 'false');
-  for (const { id } of ROUTES) {
-    lines[id] = EMPTY;
-    map.getSource<maplibregl.GeoJSONSource>(id)?.setData(EMPTY);
+// A point on the map or from GPS: snap to the nearest graph node, or say it's off the map.
+const M = 0.0003; // ≈30 m of slack around the bbox before a point counts as off the map
+function setEndAt(end: End, [lon, lat]: [number, number], label: string) {
+  const [x0, y0, x1, y1] = graph.bbox;
+  if (lon < x0 - M || lon > x1 + M || lat < y0 - M || lat > y1 + M) {
+    notice(`${label === MY_LOCATION ? "You're" : "That's"} outside the shade map. It covers about 600 m around Tanda HQ, Fortitude Valley.`);
+    show(); // put a dragged pin back
+    return;
   }
-  routes3d = null;
-  show3d();
-  setPicked(false);
-  (chips.firstElementChild as HTMLElement | null)?.focus();
+  setEnd(end, { label, node: router.nearestNode(lon, lat) });
+}
+
+function locate(end: End) {
+  if (!navigator.geolocation) return notice("This browser can't share your location.");
+  notice('Finding you…');
+  navigator.geolocation.getCurrentPosition(
+    (p) => setEndAt(end, [p.coords.longitude, p.coords.latitude], MY_LOCATION),
+    () => notice("Couldn't get your location. Search or tap the map instead."),
+    { enableHighAccuracy: true, timeout: 10_000 },
+  );
+}
+
+function renderSuggest(fresh = false) {
+  const q = fresh ? '' : inputs[active].value.trim(); // fresh focus: the old label is selected, so offer the defaults
+  options = q ? searchPlaces(places, q) : [{ label: MY_LOCATION, node: '' }, places[0]];
+  if (q && MY_LOCATION.toLowerCase().startsWith(q.toLowerCase())) options.unshift({ label: MY_LOCATION, node: '' });
+  suggestEl.innerHTML = options.length
+    ? options.map((o, i) => `<button type="button" data-i="${i}"${o.label === MY_LOCATION ? ' class="loc"' : ''}>${o.label}</button>`).join('')
+    : `<p class="empty">No street by that name on the shade map.</p>`;
+  suggestEl.hidden = false;
+}
+function choose(o: Place | undefined) {
+  if (!o) return;
+  const end = active;
+  inputs[end].blur();
+  if (o.label === MY_LOCATION) locate(end);
+  else setEnd(end, o);
+}
+
+for (const end of ['from', 'to'] as const) {
+  const input = inputs[end];
+  input.onfocus = () => {
+    setActive(end);
+    document.body.classList.add('searching');
+    input.select();
+    renderSuggest(true);
+  };
+  input.oninput = () => renderSuggest();
+  input.onblur = () => {
+    document.body.classList.remove('searching');
+    suggestEl.hidden = true;
+    restoreInputs();
+  };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') choose(options[0]);
+    if (e.key === 'Escape') input.blur();
+  };
+}
+// Keep the field focused through a tap on a suggestion; otherwise blur closes the list before the click lands.
+suggestEl.onmousedown = (e) => e.preventDefault();
+suggestEl.onclick = (e) => {
+  const i = (e.target as Element).closest('[data-i]')?.getAttribute('data-i');
+  if (i != null) choose(options[+i]);
 };
+
+swapBtn.onclick = () => {
+  if (!to) return;
+  [from, to] = [to, from];
+  restoreInputs();
+  show();
+};
+
+startPin.on('dragend', () => setEndAt('from', startPin.getLngLat().toArray(), 'Dropped pin'));
+destPin.on('dragend', () => setEndAt('to', destPin.getLngLat().toArray(), 'Dropped pin'));
+restoreInputs();
+setActive('to');
 
 // Sliders: any change recomputes both routes and the card.
 const timeInput = document.getElementById('time') as HTMLInputElement;
@@ -309,8 +394,9 @@ toggle.onclick = async () => {
 };
 
 map.on('click', (e) => {
-  for (const c of chips.children) c.setAttribute('aria-pressed', 'false');
-  pick([e.lngLat.lng, e.lngLat.lat]);
+  const end = active;
+  setEndAt(end, [e.lngLat.lng, e.lngLat.lat], 'Dropped pin');
+  if (end === 'from') setActive('to'); // next tap sets the destination
 });
 
 // North: the shadow study only reads with north known. The arrow turns with the map; tap to reset.
