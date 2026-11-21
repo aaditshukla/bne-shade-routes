@@ -53,6 +53,33 @@
         <p class="hint">Higher walks further for shade.</p>
       </details>
     </section>
+    <!-- Walking mode (filled in by src/ui/navbar.ts while someone is following a route). -->
+    <div id="nav-banner" hidden role="status" aria-live="polite">
+      <span id="nav-icon" aria-hidden="true"></span>
+      <div class="nav-text">
+        <div id="nav-dist"></div>
+        <div id="nav-instr"></div>
+        <div id="nav-sub"></div>
+      </div>
+    </div>
+    <button id="nav-recenter" type="button" hidden>Recenter</button>
+    <div id="nav-toast" hidden role="status"></div>
+    <section id="nav-bar" hidden aria-label="Trip">
+      <div id="nav-stats">
+        <div><b id="nav-arrive"></b><small>arrive</small></div>
+        <div><b id="nav-left"></b><small>to go</small></div>
+        <div><b id="nav-sun"></b><small>min in sun</small></div>
+      </div>
+      <div id="nav-summary" hidden>
+        <b id="nav-summary-line"></b>
+        <span id="nav-summary-sun"></span>
+      </div>
+      <span id="nav-strip" class="strip nav-strip"></span>
+      <div class="nav-actions">
+        <button id="nav-voice" type="button" aria-pressed="false" hidden>Voice off</button>
+        <button id="nav-end" type="button">End</button>
+      </div>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

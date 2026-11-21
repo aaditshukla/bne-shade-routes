@@ -5,6 +5,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import './style.css';
 import { createRouter, loadData, type Graph, type Route, type ShadeData } from './routing/index.ts';
 import type { ShadeView } from './three/index.ts';
+import { createNavigation } from './nav/controller.ts';
+import { createNavBar } from './ui/navbar.ts';
 import { buildPlaces, searchPlaces, type Place } from './ui/places.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
@@ -67,6 +69,7 @@ const sheetCover = () =>
 let sheetMoving = false; // while the sheet animates, move the map once at the end, not every frame
 function fitSheet() {
   document.documentElement.style.setProperty('--sheet-h', `${sheet.offsetHeight}px`); // the 3D view ends above the sheet
+  if (document.body.classList.contains('navigating')) return; // walking mode sets its own padding
   const p = map.getPadding(), c = sheetCover();
   if (p.bottom !== c.bottom || p.left !== c.left) map.setPadding(c);
 }
@@ -98,6 +101,8 @@ LANDMARKS.forEach((l, i) => {
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
+// The two routes as the router made them (the walking mode follows the one in focus).
+let routeObjs: Record<RouteId, Route | null> = { shortest: null, shadiest: null };
 // 3D view (W8): created on the first toggle; fed the same routes and slot as the 2D map.
 let view: ShadeView | null = null;
 let routes3d: { shortest: Route; shadiest: Route } | null = null;
@@ -160,6 +165,7 @@ function clearRoutes() {
     map.getSource<maplibregl.GeoJSONSource>(id)?.setData(EMPTY);
   }
   routes3d = null;
+  routeObjs = { shortest: null, shadiest: null };
   show3d();
 }
 
@@ -201,10 +207,12 @@ function show() {
     };
     map.getSource<maplibregl.GeoJSONSource>(spec.id)?.setData(lines[spec.id]);
   }
+  routeObjs = { shortest: short.r, shadiest: shady.r };
   const shortestRoute = same ? shady.r : short.r;
   routes3d = shortestRoute && shady.r ? { shortest: shortestRoute, shadiest: shady.r } : null;
   show3d();
   if (!shady.s || (!same && !short.s)) {
+    routeObjs = { shortest: null, shadiest: null };
     results.innerHTML = `<p class="headline">No walking route to there.</p>`;
     return;
   }
@@ -223,7 +231,7 @@ function show() {
       <span class="mins">${fmtMin(s!.sun_min)}<small>min in sun</small></span>
       ${strip(r!, s!.distance_m, scale)}
     </button>`);
-  results.innerHTML = `<p class="headline">${headline}</p>${rows.join('')}`;
+  results.innerHTML = `<p class="headline">${headline}</p>${rows.join('')}<button class="start" type="button" data-start>Start walking</button>`;
   select(same ? 'shadiest' : selected);
 }
 
@@ -258,9 +266,38 @@ function show3d() {
 }
 
 results.onclick = (e) => {
+  if ((e.target as Element).closest('[data-start]')) {
+    const r = routeObjs[selected] ?? routeObjs.shadiest;
+    if (r) nav.start(r);
+    return;
+  }
   const card = (e.target as Element).closest('[data-route]');
   if (card) select(card.getAttribute('data-route') as RouteId);
 };
+
+// Walking mode: follows the selected route with GPS (or `?sim`, a fake walker, for demos and tests).
+// While it runs, the page's own route lines, pins and sheet step aside; when it ends the route screen comes back.
+const simParam = new URLSearchParams(location.search).get('sim');
+const nav = createNavigation({
+  map,
+  graph,
+  shade,
+  router,
+  ui: createNavBar(),
+  getSlot: () => slot,
+  getAlpha: () => alpha,
+  sim: simParam === null ? null : { mult: Math.max(1, Number(simParam) || 1) },
+  onChange(active) {
+    document.body.classList.toggle('navigating', active);
+    destPin.getElement().style.pointerEvents = active ? 'none' : '';
+    for (const { id } of ROUTES) for (const l of [id, `${id}-sun`]) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', active ? 'none' : 'visible');
+    if (!active) {
+      select(selected); // puts the right layers back
+      map.setPadding(sheetCover());
+      frame();
+    }
+  },
+});
 
 // From/To fields. Typing searches street names and junctions; a map tap or a pin drag fills the
 // active field (To until you touch From). Everything stays inside the bbox: there is no live geocoder.
@@ -495,6 +532,7 @@ toggle.onclick = async () => {
 };
 
 map.on('click', (e) => {
+  if (nav.active) return;
   const end = active;
   setEndAt(end, [e.lngLat.lng, e.lngLat.lat], 'Dropped pin');
   if (end === 'from') setActive('to'); // next tap sets the destination
@@ -504,7 +542,7 @@ map.on('click', (e) => {
 const northBtn = document.getElementById('north')!;
 const northArrow = northBtn.querySelector('svg')!;
 map.on('rotate', () => (northArrow.style.transform = `rotate(${-map.getBearing()}deg)`));
-northBtn.onclick = () => map.resetNorth();
+northBtn.onclick = () => (nav.active ? nav.toggleOrientation() : map.resetNorth());
 
 map.on('load', () => {
   // MapLibre expands the attribution when source metadata lands (after load); fold it behind its (i) once tiles settle.

@@ -13,3 +13,10 @@ export function slotTime(slot: number, plusMin = 0): string {
   const h = Math.floor(total / 60);
   return `${((h + 11) % 12) + 1}:${String(total % 60).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
 }
+
+/** An instant (epoch ms) as Brisbane clock time, '4:42 pm'. */
+export function clockTime(epochMs: number): string {
+  const mins = Math.floor((((epochMs / 60_000 + 600) % 1440) + 1440) % 1440);
+  const h = Math.floor(mins / 60);
+  return `${((h + 11) % 12) + 1}:${String(mins % 60).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}

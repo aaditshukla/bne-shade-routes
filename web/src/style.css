@@ -59,6 +59,10 @@ html, body {
   background: var(--ground);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 button, input, summary {
   touch-action: manipulation; /* no double-tap zoom delay */
   font: inherit;
@@ -761,4 +765,243 @@ input[type='range']:focus-visible {
   font-size: 11px;
   color: var(--ink-2);
   pointer-events: none;
+}
+
+/* ---------- Walking mode ---------- */
+
+/* Start button under the route cards. */
+.start {
+  width: 100%;
+  min-height: 48px;
+  margin: 2px 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* While walking the page is the map, the banner on top and the trip bar below. */
+.navigating #sheet,
+.navigating #view-toggle,
+.navigating .landmark,
+.navigating .venue-pin {
+  display: none;
+}
+
+.navigating #map-tools {
+  top: calc(var(--banner-h, 96px) + 12px);
+}
+
+.navigating .maplibregl-ctrl-top-left {
+  top: var(--banner-h, 96px);
+}
+
+#nav-banner {
+  position: fixed;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+  border-radius: 0 0 16px 16px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 4px 18px rgb(38 40 42 / 0.3);
+}
+
+#nav-banner.warn {
+  background: var(--red);
+}
+
+#nav-icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  transition: transform 0.25s ease-out;
+}
+
+#nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+#nav-icon.pulse {
+  animation: nav-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes nav-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.nav-text {
+  min-width: 0;
+}
+
+#nav-dist {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+#nav-instr {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+#nav-sub {
+  margin-top: 3px;
+  font-size: 15px;
+  line-height: 1.25;
+  color: #e4e6e7;
+}
+
+#nav-banner.warn #nav-sub {
+  color: #fff;
+}
+
+#nav-bar {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  border-radius: 16px 16px 0 0;
+  background: var(--paper);
+  box-shadow: 0 -4px 18px rgb(38 40 42 / 0.18);
+}
+
+#nav-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+#nav-stats b,
+#nav-summary b {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+#nav-stats small {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+#nav-summary {
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+#nav-summary span {
+  display: block;
+  margin-top: 2px;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+.nav-strip {
+  position: relative;
+  margin: 10px 0 12px;
+  overflow: visible;
+}
+
+/* "You are here": a redline tick standing proud of the strip. */
+.nav-strip .marker {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 4px;
+  margin-left: -2px;
+  border: 1px solid var(--paper);
+  background: var(--red);
+  transition: left 0.9s linear;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-actions button {
+  flex: 1;
+  min-height: 48px;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.nav-actions #nav-end {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+#nav-voice[aria-pressed='true'] {
+  background: var(--sun);
+}
+
+#nav-recenter,
+#nav-toast {
+  position: fixed;
+  z-index: 4;
+  box-shadow: 0 2px 8px rgb(38 40 42 / 0.3);
+}
+
+#nav-recenter {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(var(--bar-h, 120px) + 12px);
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 22px;
+  background: var(--paper);
+  font-weight: 700;
+}
+
+#nav-toast {
+  left: 50%;
+  bottom: calc(var(--bar-h, 120px) + 68px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#nav-toast button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sun);
+  color: var(--ink);
+  font-weight: 700;
 }

@@ -1,6 +1,6 @@
 // Self-check: npm run check:time
 import assert from 'node:assert/strict';
-import { slotAt, slotTime } from './time.ts';
+import { clockTime, slotAt, slotTime } from './time.ts';
 
 const bne = (hhmm: string) => new Date(`2026-11-21T${hhmm}:00+10:00`);
 assert.equal(slotAt(bne('06:00')), 0);
@@ -20,5 +20,10 @@ assert.equal(slotTime(42), '4:30 pm');
 assert.equal(slotTime(50), '6:30 pm');
 assert.equal(slotTime(12, 4.6), '9:05 am'); // arrival: leave 9:00, walk 4.6 min
 assert.equal(slotTime(23, 20), '12:05 pm'); // crosses noon
+
+assert.equal(clockTime(bne('16:42').getTime()), '4:42 pm');
+assert.equal(clockTime(bne('00:05').getTime()), '12:05 am');
+assert.equal(clockTime(bne('12:00').getTime()), '12:00 pm');
+assert.equal(clockTime(bne('23:59').getTime()), '11:59 pm');
 
 console.log('time self-check passed');
