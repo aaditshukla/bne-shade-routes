@@ -1,0 +1,225 @@
+{
+ "_note": "Hand labels for detect.py --calibration (need >= 16/20).",
+ "images": [
+  {
+   "id": "334019144729703",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "154072403339729",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "306065247651350",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "757357161815454",
+   "left": {
+    "covered": true,
+    "kind": "awning"
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "763854577612544",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "132223672282721",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "851589452380518",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "317406940013874",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "1126317994460037",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "218806836357866",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "846625635965175",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "520756175999946",
+   "left": {
+    "covered": true,
+    "kind": "awning"
+   },
+   "right": {
+    "covered": true,
+    "kind": "awning"
+   }
+  },
+  {
+   "id": "274981134351911",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "806765123585226",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "614162626208497",
+   "left": {
+    "covered": true,
+    "kind": "awning"
+   },
+   "right": {
+    "covered": true,
+    "kind": "awning"
+   }
+  },
+  {
+   "id": "474866080459195",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": true,
+    "kind": "awning"
+   }
+  },
+  {
+   "id": "824011818199197",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "918544118934602",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "392019791995812",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": false,
+    "kind": null
+   }
+  },
+  {
+   "id": "1929442863875340",
+   "left": {
+    "covered": false,
+    "kind": null
+   },
+   "right": {
+    "covered": true,
+    "kind": "awning"
+   }
+  }
+ ]
+}
