@@ -571,7 +571,9 @@ map.on('load', () => {
         'circle-color': '#fff',
         'circle-opacity': 0.6,
         'circle-stroke-color': INK,
-        'circle-stroke-width': 1,
+        // Fades out below z17: zoomed out, thousands of 1 px rings crowd into a dark smudge.
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 15, 0, 17, 1],
+        'circle-stroke-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 17, 0.6],
       },
     },
     firstLabel,

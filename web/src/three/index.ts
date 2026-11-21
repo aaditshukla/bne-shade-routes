@@ -41,11 +41,12 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
 
   const scene = new THREE.Scene();
   scene.background = DAY_SKY.clone();
+  scene.fog = new THREE.Fog(DAY_SKY, 1300, 3200); // the far ground fades into the sky instead of ending at an edge
   const camera = new THREE.PerspectiveCamera(45, 1, 1, 5000);
   camera.position.set(0, 260, 300); // from the south, looking north, like the 2D map
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.maxPolarAngle = Math.PI / 2 - 0.05; // stay above the ground
-  controls.maxDistance = 2000;
+  controls.maxDistance = 1200; // the venue stays clear of the fog, and the far edge (≥ 3.6 km away) stays inside it
   const render = () => renderer.render(scene, camera);
   controls.addEventListener('change', render);
 
@@ -60,22 +61,31 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
   scene.add(sky, sun, sun.target); // target stays at the origin
 
   // Ground: plain at first, then the same Positron basemap as 2D (streets, names, parks) once a hidden map draws it.
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2),
-    // Grey tint: full sun lands at about the basemap's own colours instead of blowing out to white.
-    new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }),
-  );
-  ground.receiveShadow = true;
-  scene.add(ground);
-  const groundMap = drapeBasemap(data.bbox, (tex, nw, se) => {
-    const [x0, z0] = toXZ(nw);
-    const [x1, z1] = toXZ(se);
-    ground.geometry.dispose();
-    ground.geometry = new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keeps street names sharp at low angles
-    ground.material.map = tex;
-    ground.material.needsUpdate = true;
-    render();
+  // A sharp ≈ 1 km tile around the venue sits on a coarser ≈ 10 km one, and fog hides where that one ends.
+  const [w, s, e, n] = data.bbox;
+  const grounds = [
+    { pad: 1 / 3, y: 0 }, // the bbox is ≈ 600 m, so a third is ≈ 200 m each side
+    { pad: 8, y: -0.3 }, // ≈ 4.8 km each side; a little lower so the sharp tile always wins
+  ].map(({ pad, y }) => {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2).translate(0, y, 0),
+      // Grey tint: full sun lands at about the basemap's own colours instead of blowing out to white.
+      new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }),
+    );
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    const padLon = (e - w) * pad, padLat = (n - s) * pad;
+    const job = drapeBasemap([w - padLon, s - padLat, e + padLon, n + padLat], (tex, nw, se) => {
+      const [x0, z0] = toXZ(nw);
+      const [x1, z1] = toXZ(se);
+      mesh.geometry.dispose();
+      mesh.geometry = new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, y, (z0 + z1) / 2);
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keeps street names sharp at low angles
+      mesh.material.map = tex;
+      mesh.material.needsUpdate = true;
+      render();
+    });
+    return { mesh, job };
   });
   const credit = document.createElement('div');
   credit.className = 'three-credit';
@@ -177,6 +187,7 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
       sun.intensity = up ? 3 : 0;
       sky.intensity = up ? 1.2 : 0.3;
       (scene.background as THREE.Color).copy(up ? DAY_SKY : NIGHT_SKY);
+      scene.fog!.color.copy(up ? DAY_SKY : NIGHT_SKY);
       render();
     },
     showRoutes(routes) {
@@ -190,8 +201,10 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
     },
     dispose() {
       ro.disconnect();
-      groundMap.cancel();
-      ground.material.map?.dispose();
+      for (const g of grounds) {
+        g.job.cancel();
+        g.mesh.material.map?.dispose();
+      }
       credit.remove();
       controls.dispose();
       clearRoutes();
@@ -207,17 +220,15 @@ export function createShadeView(el: HTMLElement, data: ShadeViewData): ShadeView
   };
 }
 
-/** Renders the 2D basemap for the bbox plus ≈ 200 m in a hidden MapLibre map, then hands back a texture and its corners. */
-function drapeBasemap(bbox: ShadeViewData['bbox'], done: (tex: THREE.CanvasTexture, nw: Position, se: Position) => void) {
-  const [w, s, e, n] = bbox;
-  const padLon = (e - w) / 3, padLat = (n - s) / 3; // the bbox is ≈ 600 m, so a third is ≈ 200 m
+/** Renders the 2D basemap for `bounds` in a hidden MapLibre map, then hands back a texture and its corners. */
+function drapeBasemap(bounds: [number, number, number, number], done: (tex: THREE.CanvasTexture, nw: Position, se: Position) => void) {
   const holder = document.createElement('div');
   holder.style.cssText = `position:fixed;left:0;top:0;width:${BASEMAP_PX}px;height:${BASEMAP_PX}px;visibility:hidden;pointer-events:none`;
   document.body.append(holder);
   const map = new maplibregl.Map({
     container: holder,
     style: BASEMAP_STYLE,
-    bounds: [w - padLon, s - padLat, e + padLon, n + padLat],
+    bounds,
     interactive: false,
     attributionControl: false,
     pixelRatio: 1,
