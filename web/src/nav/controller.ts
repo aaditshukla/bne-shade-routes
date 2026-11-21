@@ -73,7 +73,6 @@ export function createNavigation(d: NavDeps): Navigation {
   let lastFixWall = 0;
   let walkedTotal = 0;
   let sunMetres = 0;
-  let spokenIdx = -1;
   let offerSlot = -1; // the slot we last looked for a better route in
 
   // Camera.
@@ -81,9 +80,6 @@ export function createNavigation(d: NavDeps): Navigation {
   let courseUp = true;
   let camHeading = 0;
   let camReady = false;
-
-  let voiceOn = false;
-  const speech = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
 
   const slotNow = (t: number) => slotAt(new Date(t));
   const sunOfAt = (slot: number) => (leg: Leg) => shade.sunFraction[leg.id]?.[slot] ?? 1; // missing data counts as full sun
@@ -158,13 +154,6 @@ export function createNavigation(d: NavDeps): Navigation {
     ui.recenter(true);
   });
 
-  // ---------- voice ----------
-  function say(text: string) {
-    if (!voiceOn || !speech) return;
-    speech.cancel();
-    speech.speak(new SpeechSynthesisUtterance(text));
-  }
-  const spoken = (m: Maneuver, dist: number) => `${dist > 15 ? `In ${fmtDist(dist).replace(' m', ' metres').replace(' km', ' kilometres')}, ` : ''}${instruction(m).replace(/^Arrive at/, 'You will arrive at').replace(/^(.)/, (c) => c.toLowerCase())}`;
 
   // ---------- following a route ----------
   function setRoute(r: Route) {
@@ -174,7 +163,6 @@ export function createNavigation(d: NavDeps): Navigation {
     maneuvers = buildManeuvers(r, graph, nav, legs);
     destNode = r.nodes[r.nodes.length - 1];
     prog = null;
-    spokenIdx = -1;
     stripKey = '';
     offerSlot = -1;
     drawRoute();
@@ -196,7 +184,6 @@ export function createNavigation(d: NavDeps): Navigation {
     }
     setRoute(r);
     ui.toast(why === 'start' ? 'Routing from where you are' : 'Rerouting…');
-    say(why === 'start' ? 'Routing from where you are' : 'Rerouting');
     prog = advance(nav, f, null);
     render(f);
   }
@@ -274,7 +261,7 @@ export function createNavigation(d: NavDeps): Navigation {
     if (!prog) return;
     const slot = slotNow(f.t);
     const sunOf = sunOfAt(slot);
-    const { m, i } = nextManeuver(maneuvers, prog.walked_m);
+    const { m } = nextManeuver(maneuvers, prog.walked_m);
     const toNext = Math.max(0, m.at_m - prog.walked_m);
 
     const shadeText = describeShade(shadeAhead(legs, prog.walked_m, sunOf));
@@ -310,11 +297,6 @@ export function createNavigation(d: NavDeps): Navigation {
       offerSlot = slot;
       maybeOffer(slot);
     }
-
-    if (i !== spokenIdx && toNext <= 45 && m.kind !== 'arrive') {
-      spokenIdx = i;
-      say(spoken(m, toNext));
-    }
   }
 
   function finish(f: Fix) {
@@ -328,7 +310,6 @@ export function createNavigation(d: NavDeps): Navigation {
     const end = destPos.get(destNode);
     if (end) drawPuck(end, 5, camHeading);
     drawWalked(nav.path.total);
-    say("You've arrived");
   }
 
   function onError(kind: string, message: string) {
@@ -363,11 +344,9 @@ export function createNavigation(d: NavDeps): Navigation {
     ui.show(true);
     ui.recenter(false);
     ui.summary(null);
-    ui.voice(voiceOn, !!speech);
     ui.banner({ icon: 'search', instr: d.sim ? 'Starting a simulated walk…' : 'Finding your location…' });
     d.onChange(true);
     releaseAwake = keepAwake();
-    if (voiceOn) speech?.speak(new SpeechSynthesisUtterance('')); // iOS only lets speech start from a tap: this is one
     if (d.sim) {
       const t0 = Date.parse(`${shade.date}T00:00:00+10:00`) + (360 + 15 * d.getSlot()) * 60_000;
       source = new SimSource(nav, { t0, mult: d.sim.mult });
@@ -385,7 +364,6 @@ export function createNavigation(d: NavDeps): Navigation {
     releaseAwake?.();
     releaseAwake = null;
     clearInterval(weakTimer);
-    speech?.cancel();
     for (const id of ['nav-route', 'nav-walked', 'nav-ring', 'nav-cone', 'nav-puck']) src(id)?.setData(EMPTY);
     ui.show(false);
     map.easeTo({ bearing: 0, pitch: 0, duration: 400 });
@@ -398,12 +376,6 @@ export function createNavigation(d: NavDeps): Navigation {
     ui.recenter(false);
     const at = prog?.snapped;
     if (at) moveCamera(at, prog!.heading, true);
-  });
-  ui.onVoice(() => {
-    voiceOn = !voiceOn;
-    ui.voice(voiceOn, !!speech);
-    if (voiceOn) speech?.speak(new SpeechSynthesisUtterance('Voice on'));
-    else speech?.cancel();
   });
 
   return {
