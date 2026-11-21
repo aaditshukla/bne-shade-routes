@@ -404,6 +404,7 @@ function set3d(on: boolean) {
   toggle.setAttribute('aria-pressed', String(on));
   toggle.textContent = on ? '2D' : '3D';
   threeEl.hidden = !on;
+  document.body.classList.toggle('view-3d', on); // the phone layout shrinks the sheet in 3D (style.css)
 }
 toggle.onclick = async () => {
   const on = toggle.getAttribute('aria-pressed') !== 'true';

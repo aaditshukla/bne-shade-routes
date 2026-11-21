@@ -379,6 +379,41 @@ button {
   }
 }
 
+/* Phone in 3D: the sheet shrinks so the scene keeps most of the screen, and the time slider moves up under the
+   title so it stays in view while the sheet scrolls. Keep 900px in sync with WIDE in main.ts. */
+@media (max-width: 899.98px) {
+  body.view-3d:not(.searching) #sheet {
+    display: flex;
+    flex-direction: column;
+    max-height: 40vh;
+  }
+
+  body.view-3d:not(.searching) #sheet > * {
+    flex: none;
+  }
+
+  body.view-3d:not(.searching) .slider {
+    order: 1;
+  }
+
+  body.view-3d:not(.searching) #time {
+    order: 2;
+  }
+
+  body.view-3d:not(.searching) #pick {
+    order: 3;
+  }
+
+  body.view-3d:not(.searching) #results,
+  body.view-3d:not(.searching) #notice {
+    order: 4;
+  }
+
+  body.view-3d:not(.searching) #hunger {
+    order: 5;
+  }
+}
+
 .headline {
   margin: 12px 0 10px;
   font-size: 20px;
