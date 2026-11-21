@@ -194,8 +194,8 @@ function show() {
   const scale = Math.max(...shown.map(({ s }) => s!.distance_m));
   const rows = shown.map(({ spec, r, s }) => `
     <button class="route" data-route="${spec.id}">
-      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}
-        <small>${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min</small></span>
+      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}</span>
+      <small class="route-meta">${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min · arrive ${slotTime(slot, s!.walk_min)}</small>
       <span class="mins">${fmtMin(s!.sun_min)}<small>min in sun</small></span>
       ${strip(r!, s!.distance_m, scale)}
     </button>`);

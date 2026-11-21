@@ -18,5 +18,7 @@ assert.equal(slotTime(23), '11:45 am');
 assert.equal(slotTime(24), '12:00 pm');
 assert.equal(slotTime(42), '4:30 pm');
 assert.equal(slotTime(50), '6:30 pm');
+assert.equal(slotTime(12, 4.6), '9:05 am'); // arrival: leave 9:00, walk 4.6 min
+assert.equal(slotTime(23, 20), '12:05 pm'); // crosses noon
 
 console.log('time self-check passed');

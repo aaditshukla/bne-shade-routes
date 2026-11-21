@@ -7,9 +7,9 @@ export function slotAt(date: Date): number {
   return Math.min(SLOTS - 1, Math.max(0, Math.round((mins - 360) / 15)));
 }
 
-/** Slot start as '4:30 pm'. */
-export function slotTime(slot: number): string {
-  const total = 360 + 15 * slot;
+/** Slot start, plus an optional walk in minutes (rounded), as '4:30 pm'. */
+export function slotTime(slot: number, plusMin = 0): string {
+  const total = 360 + 15 * slot + Math.round(plusMin);
   const h = Math.floor(total / 60);
   return `${((h + 11) % 12) + 1}:${String(total % 60).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
 }
