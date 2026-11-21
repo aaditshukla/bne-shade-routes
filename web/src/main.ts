@@ -8,6 +8,7 @@ import type { ShadeView } from './three/index.ts';
 import { buildPlaces, searchPlaces, type Place } from './ui/places.ts';
 import { slotAt, slotTime } from './ui/time.ts';
 import { loadShadows } from './ui/shadows.ts';
+import { LANDMARKS } from './ui/landmarks.ts';
 import type { FeatureCollection } from 'geojson';
 
 let slot = slotAt(new Date());
@@ -34,11 +35,16 @@ const { graph, shade } = data;
 results.innerHTML = '';
 const router = createRouter(graph, shade);
 const places = buildPlaces(graph);
+// Landmarks are searchable too, right after the venue; they route to the nearest street node.
+const landmarks = LANDMARKS.map((l) => ({ label: l.name, node: router.nearestNode(l.lon, l.lat) }));
+places.splice(1, 0, ...landmarks);
 let from: Place = places[0]; // the venue
 let to: Place | null = null;
 const VENUE: [number, number] = [graph.venue.lon, graph.venue.lat];
 const nodeAt = new Map(graph.nodes.map((n) => [n.id, [n.lon, n.lat] as [number, number]]));
 const edgeLength = new Map(graph.edges.map((e) => [e.id, e.length_m]));
+const edgeGeom = new Map(graph.edges.map((e) => [e.id, e.geometry]));
+const SUN = '#f2b33d'; // the strip's amber (--sun in style.css)
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -53,12 +59,14 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-left')
 // Keep the venue centred in the part of the map the bottom sheet doesn't cover.
 const sheet = document.getElementById('sheet')!;
 const threeEl = document.getElementById('three')!;
-// On a laptop the sheet is a side panel beside the map (see style.css), so it covers nothing.
+// On a laptop the sheet is a card floating on the left (see style.css), so it covers the map's left edge instead.
 const WIDE = matchMedia('(min-width: 900px)');
-const sheetCover = () => (WIDE.matches ? 0 : sheet.offsetHeight);
+const sheetCover = () =>
+  WIDE.matches ? { top: 0, right: 0, bottom: 0, left: sheet.offsetLeft + sheet.offsetWidth } : { top: 0, right: 0, bottom: sheet.offsetHeight, left: 0 };
 // setPadding is a jumpTo, which cancels a running fitBounds, so only call it when the cover really changed.
 new ResizeObserver(() => {
-  if (map.getPadding().bottom !== sheetCover()) map.setPadding({ top: 0, left: 0, right: 0, bottom: sheetCover() });
+  const p = map.getPadding(), c = sheetCover();
+  if (p.bottom !== c.bottom || p.left !== c.left) map.setPadding(c);
 }).observe(sheet);
 
 // Both pins drag to move that end of the route, like any maps app.
@@ -70,6 +78,20 @@ function makePin(cls: string, label: string) {
 }
 const startPin = makePin('venue-pin', 'Start').setLngLat(VENUE).addTo(map);
 const destPin = makePin('dest-pin', 'Destination');
+// Landmark pins: tap one to make it the end you're setting (the destination, unless you're editing From).
+LANDMARKS.forEach((l, i) => {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'landmark';
+  el.textContent = l.name;
+  el.onclick = (e) => {
+    e.stopPropagation(); // not a map tap too
+    const end = active;
+    setEnd(end, landmarks[i]);
+    if (end === 'from') setActive('to');
+  };
+  new maplibregl.Marker({ element: el, anchor: 'left', offset: [-5, 0] }).setLngLat([l.lon, l.lat]).addTo(map);
+});
 // Latest line per route; also used to seed the sources if a pick lands before the map has loaded.
 const lines: Record<string, FeatureCollection> = {};
 let selected: RouteId = 'shadiest';
@@ -163,12 +185,15 @@ function show() {
     shady.s = short.s;
     short.r = null;
   }
+  // One feature per street, carrying its sun at this slot, so the line shows where the walk is sunny.
   for (const { spec, r } of found) {
     lines[spec.id] = {
       type: 'FeatureCollection',
-      features: r
-        ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r.coords } }]
-        : [],
+      features: (r?.edges ?? []).map((id) => ({
+        type: 'Feature',
+        properties: { sun: shade.sunFraction[id]?.[slot] ?? 1 },
+        geometry: { type: 'LineString', coordinates: edgeGeom.get(id)! },
+      })),
     };
     map.getSource<maplibregl.GeoJSONSource>(spec.id)?.setData(lines[spec.id]);
   }
@@ -189,8 +214,8 @@ function show() {
   const scale = Math.max(...shown.map(({ s }) => s!.distance_m));
   const rows = shown.map(({ spec, r, s }) => `
     <button class="route" data-route="${spec.id}">
-      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}
-        <small>${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min</small></span>
+      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}</span>
+      <small class="route-meta">${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min · arrive ${slotTime(slot, s!.walk_min)}</small>
       <span class="mins">${fmtMin(s!.sun_min)}<small>min in sun</small></span>
       ${strip(r!, s!.distance_m, scale)}
     </button>`);
@@ -211,11 +236,13 @@ function select(id: RouteId) {
   for (const { id: other } of ROUTES) {
     const on = other === id;
     map.setPaintProperty(other, 'line-color', on ? RED : GREY);
-    map.setPaintProperty(other, 'line-width', on ? 5 : 3.5);
+    map.setPaintProperty(other, 'line-width', on ? 7 : 3.5);
     map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
     map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
+    map.setLayoutProperty(`${other}-sun`, 'visibility', on ? 'visible' : 'none');
   }
   map.moveLayer(id);
+  map.moveLayer(`${id}-sun`);
 }
 
 // The 3D view draws its 'shadiest' route in red on top, so hand it the route in focus there.
@@ -255,7 +282,7 @@ const restoreInputs = () => {
 
 // Frame both routes when an end moves (not on slider moves, so the map doesn't jump while dragging).
 function frame() {
-  map.setPadding({ top: 0, left: 0, right: 0, bottom: sheetCover() }); // the sheet just shrank back from search; don't wait for the observer
+  map.setPadding(sheetCover()); // the sheet just shrank back from search; don't wait for the observer
   const bounds = new maplibregl.LngLatBounds();
   for (const fc of Object.values(lines))
     for (const f of fc.features) if (f.geometry.type === 'LineString') for (const c of f.geometry.coordinates) bounds.extend(c as [number, number]);
@@ -437,6 +464,12 @@ map.on('load', () => {
   map.addLayer({ id: 'shadows', type: 'fill', source: 'shadows', paint: { 'fill-color': INK, 'fill-opacity': 0.08 } }, firstLabel);
   map.addLayer({ id: 'shadows-hatch', type: 'fill', source: 'shadows', paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.55 } }, firstLabel);
   map.addLayer({ id: 'shadows-edge', type: 'line', source: 'shadows', paint: { 'line-color': INK, 'line-width': 0.75, 'line-opacity': 0.5 } }, firstLabel);
+  // Buildings sit on top of their shadows as solid blocks, so hatch only ever means shade on the ground.
+  if (map.getLayer('building')) {
+    map.moveLayer('building', firstLabel);
+    map.setPaintProperty('building', 'fill-color', '#d4d3cc');
+    map.setPaintProperty('building', 'fill-outline-color', INK);
+  }
   // Street trees as drawn canopy outlines, to scale (metres per pixel at Brisbane's latitude).
   map.addSource('trees', { type: 'geojson', data: `${import.meta.env.BASE_URL}data/trees.geojson` });
   map.addLayer(
@@ -473,6 +506,14 @@ map.on('load', () => {
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': GREY }, // select() below styles both lines
+    });
+    // Amber core on the sunny streets of the route in focus, as strong as the street is sunny.
+    map.addLayer({
+      id: `${id}-sun`,
+      type: 'line',
+      source: id,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': SUN, 'line-width': 4, 'line-opacity': ['get', 'sun'] },
     });
   }
   select(selected);

@@ -130,6 +130,42 @@ button {
   display: block;
 }
 
+/* Landmark pins: an ink dot with the name beside it; the hit area grows to 44 px for a thumb. */
+.landmark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  color: var(--ink);
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landmark::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.landmark::after {
+  content: '';
+  position: absolute;
+  inset: -14px -6px;
+}
+
 /* Bottom sheet: everything the thumb needs, nothing the map needs. */
 #sheet {
   position: fixed;
@@ -323,23 +359,27 @@ button {
   }
 }
 
-/* Laptop: the sheet becomes a left side panel and the map takes the rest. Keep 900px in sync with WIDE in main.ts. */
+/* Laptop: the sheet floats as a card on the left, only as tall as what it shows; the map fills the screen.
+   Keep 900px in sync with WIDE in main.ts. */
 @media (min-width: 900px) {
-  #map,
-  #three {
-    left: 380px;
-  }
-
   #sheet {
-    top: 0;
+    top: 16px;
+    left: 16px;
     right: auto;
+    bottom: auto;
     box-sizing: border-box;
     width: 380px;
     max-width: none;
-    max-height: none;
+    max-height: calc(100vh - 32px);
     margin: 0;
-    border-radius: 0;
-    box-shadow: 4px 0 18px rgb(38 40 42 / 0.14);
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgb(38 40 42 / 0.18);
+  }
+
+  /* The map credits move out from under the card. */
+  .maplibregl-ctrl-top-left,
+  #three .three-credit {
+    left: 404px;
   }
 }
 
@@ -392,12 +432,16 @@ button {
   white-space: nowrap;
 }
 
-.route-name small {
+.route-name,
+.route-meta,
+.strip {
+  grid-column: 1;
+}
+
+.route-meta {
+  margin-top: -4px;
   font-size: 14px;
-  font-weight: 400;
   color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .key {
@@ -412,7 +456,8 @@ button {
 }
 
 .mins {
-  grid-row: span 2;
+  grid-column: 2;
+  grid-row: 1 / span 3;
   font-size: 32px;
   font-weight: 700;
   line-height: 1;
