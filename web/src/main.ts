@@ -14,11 +14,13 @@ let slot = slotAt(new Date());
 let alpha = 5; // shade hunger for the shadiest route
 let dest: string | null = null;
 let destLabel = '';
-// Shadow-study palette (see style.css): redline for the shadiest way, dashed grey for the shortest.
+// Shadow-study palette (see style.css): redline for the route in focus, dashed grey for the other.
 const INK = '#26282a';
+const RED = '#d7322c';
+const GREY = '#6e7275';
 const ROUTES = [
-  { id: 'shortest', label: 'Shortest', color: '#6e7275' },
-  { id: 'shadiest', label: 'Shadiest', color: '#d7322c' },
+  { id: 'shortest', label: 'Shortest' },
+  { id: 'shadiest', label: 'Shadiest' },
 ] as const;
 type RouteId = (typeof ROUTES)[number]['id'];
 
@@ -163,7 +165,7 @@ function show() {
   }
   const shortestRoute = same ? shady.r : short.r;
   routes3d = shortestRoute && shady.r ? { shortest: shortestRoute, shadiest: shady.r } : null;
-  view?.showRoutes(routes3d);
+  show3d();
   if (!shady.s || (!same && !short.s)) {
     results.innerHTML = `<p class="headline">No walking route to there.</p>`;
     return;
@@ -178,7 +180,7 @@ function show() {
   const scale = Math.max(...shown.map(({ s }) => s!.distance_m));
   const rows = shown.map(({ spec, r, s }) => `
     <button class="route" data-route="${spec.id}">
-      <span class="route-name"><span class="key${spec.id === 'shortest' ? ' dashed' : ''}"></span>${same ? 'Shortest and shadiest' : spec.label}
+      <span class="route-name"><span class="key"></span>${same ? 'Shortest and shadiest' : spec.label}
         <small>${Math.round(s!.distance_m)} m · ${Math.max(1, Math.round(s!.walk_min))} min</small></span>
       <span class="mins">${fmtMin(s!.sun_min)}<small>min in sun</small></span>
       ${strip(r!, s!.distance_m, scale)}
@@ -187,13 +189,30 @@ function show() {
   select(same ? 'shadiest' : selected);
 }
 
-// Highlight one route: its card is pressed and its line sits on top at full strength.
+// Focus one route: its card is pressed, its key and line turn solid red and sit on top; the other goes dashed grey.
 function select(id: RouteId) {
   selected = id;
-  for (const c of results.querySelectorAll('[data-route]')) c.setAttribute('aria-pressed', String(c.getAttribute('data-route') === id));
+  for (const c of results.querySelectorAll('[data-route]')) {
+    const on = c.getAttribute('data-route') === id;
+    c.setAttribute('aria-pressed', String(on));
+    c.querySelector('.key')?.classList.toggle('dashed', !on);
+  }
+  show3d();
   if (!map.getLayer(id)) return; // map still loading; the load handler applies it
-  for (const { id: other } of ROUTES) map.setPaintProperty(other, 'line-opacity', other === id ? 1 : 0.4);
+  for (const { id: other } of ROUTES) {
+    const on = other === id;
+    map.setPaintProperty(other, 'line-color', on ? RED : GREY);
+    map.setPaintProperty(other, 'line-width', on ? 5 : 3.5);
+    map.setPaintProperty(other, 'line-dasharray', on ? undefined : [2, 1.5]);
+    map.setPaintProperty(other, 'line-opacity', on ? 1 : 0.6);
+  }
   map.moveLayer(id);
+}
+
+// The 3D view draws its 'shadiest' route in red on top, so hand it the route in focus there.
+function show3d() {
+  if (!view || !routes3d) return view?.showRoutes(null);
+  view.showRoutes(selected === 'shadiest' ? routes3d : { shortest: routes3d.shadiest, shadiest: routes3d.shortest });
 }
 
 results.onclick = (e) => {
@@ -238,7 +257,7 @@ changeBtn.onclick = () => {
     map.getSource<maplibregl.GeoJSONSource>(id)?.setData(EMPTY);
   }
   routes3d = null;
-  view?.showRoutes(null);
+  show3d();
   setPicked(false);
   (chips.firstElementChild as HTMLElement | null)?.focus();
 };
@@ -280,7 +299,7 @@ toggle.onclick = async () => {
     const [{ createShadeView }, buildings, trees] = await Promise.all([import('./three/index.ts'), getJson('buildings.geojson'), getJson('trees.geojson')]);
     view = createShadeView(threeEl, { bbox: graph.bbox, sun: shade.sun, buildings, trees });
     view.setSlot(slot);
-    view.showRoutes(routes3d);
+    show3d();
   } catch (err) {
     console.error('3D view failed to load', err);
     set3d(false);
@@ -357,14 +376,14 @@ map.on('load', () => {
     },
     firstLabel,
   );
-  for (const { id, color } of ROUTES) {
+  for (const { id } of ROUTES) {
     map.addSource(id, { type: 'geojson', data: lines[id] ?? { type: 'FeatureCollection', features: [] } });
     map.addLayer({
       id,
       type: 'line',
       source: id,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: id === 'shadiest' ? { 'line-color': color, 'line-width': 5 } : { 'line-color': color, 'line-width': 3.5, 'line-dasharray': [2, 1.5] },
+      paint: { 'line-color': GREY }, // select() below styles both lines
     });
   }
   select(selected);
